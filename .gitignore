@@ -1,0 +1,20 @@
+# This repo is likely to be public. Anything secret stays out from the first commit.
+
+# Rust build output
+/target/
+
+# Claude Code: throwaway worktrees and personal settings
+/.claude/worktrees/
+/.claude/settings.local.json
+
+# Secrets and credentials
+.env
+.env.*
+*.pem
+*.key
+/secrets/
+
+# Real mail. Test fixtures must be synthetic.
+*.eml
+*.mbox
+/mail/
