@@ -1,3 +1,5 @@
+<!-- Keep it short: aim for one to three lines a section. Say what the change is, not how it was arrived at. -->
+
 ## What this changes, and why
 
 <!-- What a reader needs to know before opening the diff. Plain words. -->
@@ -21,3 +23,11 @@
 ## Does it touch `tuit-core`?
 
 <!-- "No", or say what changed there. Reviewers check any change to the core for I/O. -->
+
+## Decisions for you
+
+<!-- Anything the reader has to choose, as a short list. Leave this section out if there is nothing. -->
+
+## Review
+
+<!-- One line: how many passes, and the kind of thing they caught. Say plainly if review caught a real bug, and if a builder wrote the first draft. -->

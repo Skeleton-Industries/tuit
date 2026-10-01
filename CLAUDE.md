@@ -31,15 +31,19 @@ We adopt common guides and don't write our own.
 - Small and atomic: one change per commit.
 - Subject line only, under 80 characters, in the imperative: "Add the Maildir reader", "Fix the date parsing".
 - A commit that needs a body is two commits. The "why" goes in the pull request description.
-- The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote.
-- History is kept as it happened. No squashing, no force-pushing, and no going back to fix old commits when a convention changes. There is one exception, below.
+- The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote. It names the model that made the commit. A rebuilt commit carries the lead's.
+- Before its first push, a branch is a draft. The lead who will open the pull request rebuilds it into the commits a reader should see: small, one change each, in an order that makes sense, each passing the three checks. Rebuild on a fresh branch, started from the same commit of `main` as the draft, and check that `git diff <draft> <rebuilt>` prints nothing. Keep the draft branch, unpushed, until the pull request merges.
+- Nothing pushed is ever rewritten. A draft pull request counts as pushed. Once a commit is on GitHub there is no squashing, no amending, no force-pushing, and no going back to fix old commits when a convention changes. A change after a push is a new commit. There is one exception, below.
 - If a secret, a token, a real email address or real mail is found in a commit, stop and tell your lead. A lead tells JB. Don't push it, and don't try to fix it yourself. This is the one case where history gets rewritten, whenever the leak is found and however old the commit.
 - Pull requests are merged on GitHub with a merge commit. GitHub writes that commit, so the rules above don't apply to it. `git log --first-parent --oneline main` then shows each merged pull request as one line.
 
 ## Review
 
 - Before a pull request opens, a reviewing agent reads the change, with the job of finding what's wrong. The reviewer is neither the author nor the lead who opens the pull request. The lead arranges this.
-- It covers docs and the pull request description as well as code.
-- A pull request's description has all six sections in `.github/pull_request_template.md`, each answered, "None" or "No" included. Other sections may be added.
+- The review covers docs and the pull request description as well as code.
+- What gets pushed is what the reviewer read, plus the fixes for what it found. Fixes go on the draft, before the rebuild. A fix that adds something new, and isn't only a correction, is read again.
+- A pull request's description has every section in `.github/pull_request_template.md`, each answered, "None" or "No" included. "Decisions for you" is left out when there is nothing to decide. Other sections may be added.
+- Keep the description short: aim for one to three lines a section, readable in two minutes. Explaining the Rust wins where the two pull apart. It says what the change is, not how it was arrived at.
+- The "Review" section is one line: how many passes, and the kind of thing they caught. If review caught a real bug, it says so plainly. If a builder wrote the first draft, it says that too.
 - A pull request that touches `crates/tuit-core` says so in its description, and its reviewers check the change for I/O: files, the network, running programs, the environment, the terminal. Review holds that rule. The lint there only catches the obvious.
 - What reaches JB is the version the lead will stand behind. If JB finds dead code, circular logic or a false claim, the review failed.
