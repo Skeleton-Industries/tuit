@@ -11,6 +11,10 @@ workspace = true
 name = "tuit"
 path = "src/main.rs"
 
+[[bench]]
+name = "speed"
+harness = false
+
 [dependencies]
 tuit-core = { workspace = true }
 tuit-maildir = { workspace = true }
