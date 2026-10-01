@@ -1,10 +1,15 @@
-# Holds "no I/O in the core". Applies to this crate only. See docs/ARCHITECTURE.md.
+# A tripwire for "no I/O in the core", not a wall. Review holds that rule; this
+# catches the obvious accidents. It applies to this crate only, tests included.
+# See docs/ARCHITECTURE.md.
 #
-# Clippy only knows what is on these lists. A path it can't find is reported as
-# a warning that does not fail the build, so check the output after editing.
+# The lists are short on purpose. Add an entry only when a review finds a
+# breach that got through, and say which breach in the pull request.
 #
-# The lists apply to this crate's tests too: no println!, dbg! or fixture files
-# there. Core tests use made-up values held in the test itself.
+# A path Clippy can't find is reported as a warning that does not fail the
+# build, so check the output after editing.
+#
+# Printing is refused by the #![deny] line at the top of src/lib.rs, and
+# allowed in tests by the two settings below.
 
 allow-print-in-tests = true
 allow-dbg-in-tests = true
