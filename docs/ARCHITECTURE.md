@@ -72,7 +72,7 @@ The first slice runs on made-up mail in test folders. Real mail arrives with the
 
 A workspace is a standard part of Cargo. Prior art: ripgrep, Helix, Alacritty and the terminal mail client meli are all workspaces.
 
-Four crates before any code is more structure than a project this size needs on day one, and a boundary drawn this early may turn out to be in the wrong place. We split now for one reason: the direction rule is only checked at a crate boundary. Inside a single crate, modules can depend on each other in both directions and nothing objects. If a boundary proves wrong, a crate folds back into a module by moving a folder, editing the crate lists and changing the import paths. There are no versions or releases between the crates while tuit is installed from the repo. Publishing to crates.io would mean publishing and versioning all four.
+Four crates before any code is more structure than a project this size needs on day one, and a boundary drawn this early may turn out to be in the wrong place. The usual advice is to start with one crate and split when it hurts. We split now for one reason: the direction rule is only checked at a crate boundary. Inside a single crate, modules can depend on each other in both directions and nothing objects. If a boundary proves wrong, a crate folds back into a module by moving a folder, editing the crate lists and changing the import paths. There are no versions or releases between the crates while tuit is installed from the repo. Publishing to crates.io would mean publishing and versioning all four.
 
 ## Constraints
 
