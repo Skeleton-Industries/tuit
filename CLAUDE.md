@@ -4,18 +4,11 @@ A terminal email client, written in Rust, that might grow into a general inbox h
 
 This file is shared house rules. It doesn't say who you are: that comes from your agent file in `.claude/agents/`, started with `claude --agent <name>`.
 
-## Company context
-
-The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. `BRIEF.md` says what we're doing and why, `LOG.md` says what happened, `PLAN.md` is the one list of work, `WAYS-OF-WORKING.md` says how we work, and `team/` holds each role's brief.
-
-- **Leads** (for example `grace`) read it and write to it, to talk to the board.
-- **Everyone else** stays out of it. Your lead gives you what you need in the task. If the task names files there for you to read, you may read those and no others, unless your agent file says to stay out altogether.
-
 ## Rules
 
 - This repo is public. No secrets, tokens, real email addresses or real mail in any commit, ever. Test fixtures are synthetic.
 - Nothing merges to `main` without JB's approval on a GitHub pull request.
-- No changes to the machine (packages, global config, anything with sudo) without board approval. Leads propose them in `~/Projects/scaffold/SYSTEM.md`.
+- No changes to the machine (packages, global config, anything with sudo) without board approval. Leads propose them to the board.
 - Work in small, reviewable pieces. A PR JB can't read in ten minutes is too big.
 - Once the repo has a `Cargo.toml`, three checks must pass before anything is called done. Run them from the root of your own checkout: your worktree, if you're in one.
   - `cargo fmt --all --check`
