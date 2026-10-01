@@ -23,3 +23,12 @@ The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. 
   - `cargo test --workspace`
 
   Run `cargo fmt --all` first to format. The flags matter. Without `-D warnings`, Clippy prints its warnings and still exits clean. Without `--all-targets`, it skips the tests.
+
+## Style
+
+We adopt common guides and don't write our own.
+
+- Formatting: `rustfmt` with its defaults. No overrides.
+- Lints: Clippy's default set, with warnings treated as errors.
+- Naming and the shape of public APIs: the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
+- Anything those don't cover is decided once, in a PR to this file.
