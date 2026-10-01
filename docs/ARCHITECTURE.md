@@ -87,7 +87,7 @@ Two things to know. Another crate, `tuit-bin`, already installs a command called
 ## Not decided yet
 
 - **Sending and deleting, and what an LLM may do.** Working assumption: both need a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
-- **A keyring default.** Looking the password up in the system keyring with no setup would be friendlier than writing a command. Worth adding once the command route works.
+- **A keyring default.** Looking the password up in the system keyring with no setup would be friendlier than writing a command. It wouldn't work over SSH or from a scheduled job, so the command stays. Worth adding once the command route works.
 - **Large folders.** Showing a message list means opening every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
 - **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
 - **Which accounts.** IMAP with an app-specific password comes first. That covers iCloud, personal Gmail accounts with 2-Step Verification, and Fastmail plans that include IMAP. Work Google accounts usually don't allow it. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
