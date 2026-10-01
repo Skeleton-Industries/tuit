@@ -6,6 +6,9 @@
 # The lists apply to this crate's tests too: no println!, dbg! or fixture files
 # there. Core tests use made-up values held in the test itself.
 
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+
 disallowed-types = [
     { path = "std::fs::File", reason = "the core does no file access" },
     { path = "std::fs::OpenOptions", reason = "the core does no file access" },
