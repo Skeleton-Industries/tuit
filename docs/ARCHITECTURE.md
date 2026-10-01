@@ -78,7 +78,7 @@ What does carry over from gems: a boundary drawn this early may turn out to be i
 
 The cost: four crates before any code is more structure than a project this size needs on day one. The usual advice is to start with one crate and split when it hurts. We split now for one reason: the direction rule is only checked at a crate boundary. Inside a single crate, modules can depend on each other in both directions and nothing objects. A rule the compiler holds doesn't depend on a builder having read this page.
 
-Undoing it is mechanical. A crate folds back into a module by moving a folder and changing the import paths, and the compiler lists every path that needs changing.
+Undoing it is mostly mechanical. A crate folds back into a module by moving a folder, editing the crate lists and changing the import paths, and the compiler lists every path that needs changing.
 
 ## Constraints
 
