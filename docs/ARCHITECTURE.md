@@ -81,13 +81,13 @@ Two things to know. Another crate, `tuit-bin`, already installs a command called
 | Mail is read from a local Maildir (one file per message). Fetching from the server is a separate job that fills it. | It works offline and needs no round trip to a server. Other Unix tools can read the same folder. Changing how mail is fetched doesn't touch the reader. |
 | The full-screen app and the inline pieces share the same widgets. | A compose form is drawn by the same code in both. Each mode has its own small setup and event loop, and an inline piece has a fixed height chosen at the start. Our terminal library, ratatui, supports both. |
 | Every action is a core function first, and a key press or command second. | The app, the inline pieces and the plain commands can't drift apart. An LLM gets every reading and sorting feature a person has, where sorting means moving and flagging. Sending and deleting are gated: see below. |
-| Passwords are never in a config file or in this repo. On a desktop they go in the system keyring. | A desktop keyring normally encrypts them on disk with your login password, which protects a stolen or switched-off machine. It doesn't hide them from other programs running as you, including an LLM with a shell. |
+| Passwords are never in a config file or in this repo. tuit gets each one by running a command you choose, such as your password manager's or the system keyring's. | It works the same on every platform, with or without a desktop. It's how mbsync, msmtp and aerc already do it, so we don't invent a secret store. How well the password is guarded depends on the tool you choose: a plain keyring hands it to any program running as you, including an LLM with a shell. |
 | The core models email for now. | We'll generalise when a second source exists, and not before. |
 
 ## Not decided yet
 
 - **Sending and deleting, and what an LLM may do.** Working assumption: both need a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
-- **Passwords without a desktop.** Over SSH or from a scheduled job there's often no keyring to ask.
+- **A keyring default.** Looking the password up in the system keyring with no setup would be friendlier than writing a command. Worth adding once the command route works.
 - **Large folders.** Showing a message list means opening every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
 - **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
 - **Which accounts.** IMAP with an app-specific password comes first. That covers iCloud, personal Gmail accounts with 2-Step Verification, and Fastmail plans that include IMAP. Work Google accounts usually don't allow it. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
