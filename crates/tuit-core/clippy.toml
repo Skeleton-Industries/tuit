@@ -1,0 +1,32 @@
+# Holds "no I/O in the core". Applies to this crate only. See docs/ARCHITECTURE.md.
+
+disallowed-types = [
+    { path = "std::fs::File", reason = "the core does no file access" },
+    { path = "std::fs::OpenOptions", reason = "the core does no file access" },
+    { path = "std::fs::DirEntry", reason = "the core does no file access" },
+    { path = "std::fs::ReadDir", reason = "the core does no file access" },
+    { path = "std::fs::DirBuilder", reason = "the core does no file access" },
+    { path = "std::net::TcpStream", reason = "the core does no network access" },
+    { path = "std::net::TcpListener", reason = "the core does no network access" },
+    { path = "std::net::UdpSocket", reason = "the core does no network access" },
+    { path = "std::process::Command", reason = "the core does not run programs" },
+    { path = "std::process::Child", reason = "the core does not run programs" },
+    { path = "std::process::Stdio", reason = "the core does not run programs" },
+]
+
+disallowed-methods = [
+    { path = "std::fs::read", reason = "the core does no file access" },
+    { path = "std::fs::read_to_string", reason = "the core does no file access" },
+    { path = "std::fs::write", reason = "the core does no file access" },
+    { path = "std::fs::read_dir", reason = "the core does no file access" },
+    { path = "std::fs::create_dir", reason = "the core does no file access" },
+    { path = "std::fs::create_dir_all", reason = "the core does no file access" },
+    { path = "std::fs::remove_file", reason = "the core does no file access" },
+    { path = "std::fs::remove_dir", reason = "the core does no file access" },
+    { path = "std::fs::remove_dir_all", reason = "the core does no file access" },
+    { path = "std::fs::copy", reason = "the core does no file access" },
+    { path = "std::fs::rename", reason = "the core does no file access" },
+    { path = "std::fs::metadata", reason = "the core does no file access" },
+    { path = "std::process::exit", reason = "the core must not end the process" },
+    { path = "std::env::var", reason = "the core does not read the environment" },
+]
