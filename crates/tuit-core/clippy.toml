@@ -1,4 +1,7 @@
 # Holds "no I/O in the core". Applies to this crate only. See docs/ARCHITECTURE.md.
+#
+# Clippy only knows what is on these lists. A path it can't find is reported as
+# a warning that does not fail the build, so check the output after editing.
 
 disallowed-types = [
     { path = "std::fs::File", reason = "the core does no file access" },
