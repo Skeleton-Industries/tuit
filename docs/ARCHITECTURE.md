@@ -72,7 +72,9 @@ The first slice runs on made-up mail in test folders. Real mail arrives with the
 
 Yes. A workspace is a standard part of Cargo, not something we built. ripgrep, Helix, Alacritty and the terminal mail client meli are all workspaces. meli splits a mail library, `melib`, from the app that uses it. Ours goes a step further: meli's library does its own network and file work, and our core doesn't.
 
-It isn't a constellation of gems. The crates live in one repo, share one lock file, and have no versions or releases between them while we install from the repo. Publishing to crates.io would mean publishing and versioning all four. One command builds and tests them all. A change that crosses two crates is one commit, and the compiler checks both sides of it.
+How it differs from a constellation of gems: a change that crosses two crates is one commit, and the compiler checks both sides of it before anything runs. The crates also live in one repo, share one lock file, and are built and tested by one command, though gems kept in one repo can do that too. There are no versions or releases between them while we install from the repo. Publishing to crates.io would mean publishing and versioning all four.
+
+What does carry over from gems: a boundary drawn this early may turn out to be in the wrong place.
 
 The cost: four crates before any code is more structure than a project this size needs on day one. The usual advice is to start with one crate and split when it hurts. We split now for one reason: the direction rule is only checked at a crate boundary. Inside a single crate, modules can depend on each other in both directions and nothing objects. A rule the compiler holds doesn't depend on a builder having read this page.
 
