@@ -1,0 +1,37 @@
+name: Audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Daily, early morning UTC: new advisories appear without our code changing.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # The Rust version CI uses. Bump it on purpose, not by accident.
+  RUSTUP_TOOLCHAIN: "1.98.1"
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked --version 0.22.2
+
+      - name: Check dependencies against known vulnerabilities
+        run: cargo audit

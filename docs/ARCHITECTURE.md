@@ -81,7 +81,7 @@ tuit has to be fast, secure and maintainable, and each of those has to be shown,
 Which of the checks in the table below exist today:
 
 - **Formatting, lints and tests:** run in CI on every pull request, and block a merge. `main` requires them to pass.
-- **The vulnerability check:** not yet.
+- **The vulnerability check:** runs on every pull request, on every push to `main` and once a day. It reports and doesn't block. A known vulnerability fails it. A dependency that is unmaintained, withdrawn or marked "unsound" gets a warning and passes.
 - **The core tripwire and the `unsafe` ban:** in place.
 - **The benchmark:** runs on every pull request and never blocks. It prints start-up, the one number that can be measured so far, on the workflow run's summary page. It doesn't yet say whether a number got worse. The other two numbers arrive with the code they measure.
 - **The two pull request sections:** in the template in `.github/`, required by a house rule, and held by review.
