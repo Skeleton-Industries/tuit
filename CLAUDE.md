@@ -31,7 +31,7 @@ We adopt common guides and don't write our own.
 - Small and atomic: one change per commit.
 - Subject line only, under 80 characters, in the imperative: "Add the Maildir reader", "Fix the date parsing".
 - A commit that needs a body is two commits. The "why" goes in the pull request description.
-- The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote.
+- The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote. It names the model that made the commit. A rebuilt commit carries the lead's.
 - Before its first push, a branch is a draft. The lead who will open the pull request rebuilds it into the commits a reader should see: small, one change each, in an order that makes sense, each passing the three checks. Rebuild on a fresh branch, started from the same commit of `main` as the draft, and check that `git diff <draft> <rebuilt>` prints nothing. Keep the draft branch, unpushed, until the pull request merges.
 - Nothing pushed is ever rewritten. A draft pull request counts as pushed. Once a commit is on GitHub there is no squashing, no amending, no force-pushing, and no going back to fix old commits when a convention changes. A change after a push is a new commit. There is one exception, below.
 - If a secret, a token, a real email address or real mail is found in a commit, stop and tell your lead. A lead tells JB. Don't push it, and don't try to fix it yourself. This is the one case where history gets rewritten, whenever the leak is found and however old the commit.
