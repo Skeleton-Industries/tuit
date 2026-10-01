@@ -8,7 +8,7 @@ _Written on 1 October 2026, before the first line of Rust. It's a direction, not
 
 **Later:** one place on your own machine where everything that piles up arrives, starting with email. You manage it, or an LLM you trust does. Today an LLM needs a separate integration for every service where things pile up. With tuit it speaks to one small local tool.
 
-tuit adds no service of its own. You bring your own accounts. Your mail and passwords go only to your mail provider, and to whatever LLM you choose to point at tuit.
+tuit adds no service of its own. You bring your own accounts. Your passwords go only to your mail provider. Your mail goes there too, and to whatever LLM you choose to point at tuit.
 
 ## Three ways in, one core
 
@@ -41,7 +41,7 @@ The core knows what a message is and what you can do with one. It doesn't touch 
 
 Why it matters:
 
-- **Swapping is contained.** A different mail store is a new edge. The core's contract with stores will grow as we learn (marking mail as read, for one), but the screens don't change.
+- **Swapping is contained, if we ever need it.** A different mail store would be a new edge. The core's contract with stores will grow as we learn (marking mail as read, for one), but the screens don't change.
 - **Testing is cheap.** The core can be tested with made-up messages, with no disk and no network.
 - **Risk is easier to find.** Code that handles passwords, talks to the network or deletes files belongs in an edge. The decision about *what* to delete is core logic, and needs just as careful a review.
 
@@ -49,8 +49,8 @@ Why it matters:
 
 Two checks, and it's worth knowing which is which.
 
-- **The compiler holds the direction.** Each crate lists the crates it may use in its `Cargo.toml`, and it can use no others. The core's list has none of our edge crates and no terminal or mail-protocol crates. Core code that tried to call them wouldn't compile, and Cargo refuses circular dependencies.
-- **A lint holds "no I/O in the core".** Rust's standard library can open files and sockets with no dependency at all, so the compiler alone won't stop that. Clippy, the linter, is configured for the core crate to reject the standard library's file, network and process types, and it runs on every pull request. It works from a list, so it catches the obvious cases. Review catches the rest.
+- **The compiler holds the direction.** Each crate lists the crates it may use in its `Cargo.toml`, and it can reach no others except through them. The core's list has none of our edge crates and no terminal or mail-protocol crates. Core code that tried to call them wouldn't compile, and Cargo refuses circular dependencies.
+- **A lint and review hold "no I/O in the core".** Rust's standard library can open files and sockets with no dependency at all, so the compiler alone won't stop that. Clippy, the linter, will be configured for the core crate with a list of the standard library's file, network and process types and functions, and run with warnings treated as errors on every pull request. It has three limits. It only knows what's on the list. It can be switched off with an `#[allow]` line. And it can't see inside the core's dependencies. Review covers those, so an `#[allow]` or a new dependency in the core is something a reviewer stops on.
 
 If you know Rails:
 
@@ -80,15 +80,16 @@ Two things to know. Another crate, `tuit-bin`, already installs a command called
 | --- | --- |
 | Mail is read from a local Maildir (one file per message). Fetching from the server is a separate job that fills it. | It works offline and needs no round trip to a server. Other Unix tools can read the same folder. Changing how mail is fetched doesn't touch the reader. |
 | The full-screen app and the inline pieces share the same widgets. | A compose form is drawn by the same code in both. Each mode has its own small setup and event loop, and an inline piece has a fixed height chosen at the start. Our terminal library, ratatui, supports both. |
-| Every action is a core function first, and a key press or command second. | The app, the inline pieces and the plain commands can't drift apart. An LLM gets every reading and sorting feature a person has. Sending is gated: see below. |
-| Passwords are never in a config file or in this repo. On a desktop they go in the system keyring. | A keyring keeps them encrypted on disk. It doesn't hide them from other programs running as you, including an LLM with a shell. |
+| Every action is a core function first, and a key press or command second. | The app, the inline pieces and the plain commands can't drift apart. An LLM gets every reading and sorting feature a person has, where sorting means moving and flagging. Sending and deleting are gated: see below. |
+| Passwords are never in a config file or in this repo. On a desktop they go in the system keyring. | A desktop keyring normally encrypts them on disk with your login password, which protects a stolen or switched-off machine. It doesn't hide them from other programs running as you, including an LLM with a shell. |
 | The core models email for now. | We'll generalise when a second source exists, and not before. |
 
 ## Not decided yet
 
-- **Sending, and what an LLM may send.** Working assumption: sending needs a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
+- **Sending and deleting, and what an LLM may do.** Working assumption: both need a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
 - **Passwords without a desktop.** Over SSH or from a scheduled job there's often no keyring to ask.
-- **Large folders.** Listing a Maildir means reading every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
+- **Large folders.** Showing a message list means opening every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
 - **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
-- **Which accounts.** IMAP with an app-specific password comes first, which covers iCloud, Gmail and Fastmail. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
+- **Which accounts.** IMAP with an app-specific password comes first. That covers iCloud, personal Gmail accounts with 2-Step Verification, and Fastmail plans that include IMAP. Work Google accounts usually don't allow it. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
+- **A stricter core.** Rust can build a crate without the standard library's file and network parts at all (`no_std`), which would make "no I/O in the core" a compiler check. It costs some convenience. Worth trying if the lint proves leaky.
 - **The command name.** Keep `tuit` despite the clash with `tuit-bin`, or change it.
