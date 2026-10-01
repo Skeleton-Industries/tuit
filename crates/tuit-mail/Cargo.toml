@@ -1,0 +1,17 @@
+[package]
+name = "tuit-mail"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "tuit"
+path = "src/main.rs"
+
+[dependencies]
+tuit-core = { workspace = true }
+tuit-maildir = { workspace = true }
+tuit-tui = { workspace = true }
