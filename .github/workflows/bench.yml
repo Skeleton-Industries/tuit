@@ -26,11 +26,14 @@ jobs:
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
 
-      # GitHub runs this with bash -e -o pipefail, so if cargo bench fails
-      # the step fails even though its output goes through tee. A slow
-      # number never fails the step: the benchmark only reports it.
+      # No pipe here, on purpose. GitHub's default shell doesn't set pipefail,
+      # so a failing cargo bench in front of a pipe would leave the step
+      # green. A slow number never fails the step: the benchmark only
+      # reports it.
       - name: Run the speed benchmark
-        run: cargo bench --locked -p tuit-mail --bench speed | tee "$RUNNER_TEMP/speed.txt"
+        run: |
+          cargo bench --locked -p tuit-mail --bench speed > "$RUNNER_TEMP/speed.txt"
+          cat "$RUNNER_TEMP/speed.txt"
 
       - name: Report the numbers in the job summary
         run: |
