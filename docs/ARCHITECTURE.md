@@ -96,7 +96,9 @@ One early measurement, so the 200 ms target isn't a guess. A throwaway program r
 
 The package is `tuit-mail` because `tuit` on crates.io is someone else's library. The command you type is `tuit`.
 
-Two things to know. Another crate, `tuit-bin`, already installs a command called `tuit`, so the two would clash on a machine that installed both. And our `tuit-*` names are free as of 1 October 2026 but not reserved. Whether to live with the clash is an open question below.
+Two things to know. Our `tuit-*` names are free as of 1 October 2026 but not reserved. And another crate, `tuit-bin`, already installs a command called `tuit`.
+
+We keep `tuit` anyway. `tuit-bin` is a git log viewer with about a hundred downloads. Neither it nor any other `tuit` command is in Arch's repositories or the AUR as of 1 October 2026. If someone installs both through Cargo, Cargo refuses the second one and says why. It doesn't overwrite the first. So the clash is loud and rare, and a contraction such as `tmail` would cost us the name for little.
 
 ## Decisions so far
 
@@ -116,4 +118,3 @@ Two things to know. Another crate, `tuit-bin`, already installs a command called
 - **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
 - **Which accounts.** IMAP with an app-specific password comes first. That covers iCloud, personal Gmail accounts with 2-Step Verification, and Fastmail plans that include IMAP. Work Google accounts usually don't allow it. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
 - **A stricter core.** Rust can build a crate without the standard library (`no_std`), keeping only the parts that need no operating system. That makes "no I/O in the core" a compiler check for the core's own code, with no list to maintain. It can still be switched back on with one line, and it still can't see inside dependencies. The cost is real: no `HashMap`, paths or clock, and a narrower choice of crates for the core. Worth trying if the lint proves leaky.
-- **The command name.** Keep `tuit` despite the clash with `tuit-bin`, or change it.
