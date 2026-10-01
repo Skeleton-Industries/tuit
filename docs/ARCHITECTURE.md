@@ -125,6 +125,4 @@ We keep `tuit` anyway. `tuit-bin` is a git log viewer with about a hundred downl
 Nothing here is built or decided. It's a list of what we already know will be hard, kept in one place so it isn't rediscovered.
 
 - **The second mail account is the rehearsal.** iCloud comes first and Gmail second, and Gmail doesn't behave like iCloud: its labels don't map cleanly onto folders. When Gmail goes in, we write down everything in the core that had to change. That list is the best evidence we'll get of what a second kind of source will cost.
-- **The word.** The core says "message" and means email. The general word is "item". See "Decisions so far".
 - **Remembered decisions on two machines.** tuit's own data isn't shared the way mail is. Three options so far. Carry what belongs to one message in the mailbox itself, as flags or folders, so the mail server shares it; this depends on what each server allows, which we haven't checked. Keep rules, such as "always defer this sender", in a plain text file that you sync as you would any other settings file. Or accept one machine. A source that can't carry any state of ours rules out the first option for that source.
-- **Search across sources.** A search trait in the core, with one edge per place to search.
