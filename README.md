@@ -18,6 +18,14 @@ Run the `tuit` command:
 cargo run -p tuit-mail
 ```
 
+Run the speed benchmark:
+
+```
+cargo bench -p tuit-mail --bench speed
+```
+
+It prints the median, fastest and slowest time to run the `tuit` command, next to the target.
+
 The three checks every change must pass:
 
 ```
