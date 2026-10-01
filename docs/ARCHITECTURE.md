@@ -112,7 +112,7 @@ We keep `tuit` anyway. `tuit-bin` is a git log viewer with about a hundred downl
 
 ## Not decided yet
 
-- **Sending and deleting, and what an LLM may do.** Working assumption: both need a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
+- **Sending and deleting, and what an LLM may do.** Both are out of the first iteration. tuit reads, moves and flags, and most of what a person does with mail is read it and act on it. Deleting here means moving to Trash, since tuit never erases mail itself; most providers empty Trash after a while, so it's a slow delete and not just another move. When they come back in, the working assumption is that both need a person's approval. How tuit tells a person from a program is unsolved: a program can type a command or drive the app as easily as a person can. We aren't building anything towards that answer now, and we accept that it may mean rework later.
 - **A keyring default.** Looking the password up in the system keyring with no setup would be friendlier than writing a command. It wouldn't work over SSH or from a scheduled job, so the command stays. Worth adding once the command route works.
 - **Large folders.** Showing a message list means opening every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
 - **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
