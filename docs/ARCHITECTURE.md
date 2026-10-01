@@ -78,7 +78,7 @@ Four crates before any code is more structure than a project this size needs on 
 
 tuit has to be fast, secure and maintainable, and each of those has to be shown, not taken on trust. The numbers are starting targets, measured on the build machine. We'll tune them as we learn what good looks like. Where the benchmark runs isn't settled: CI's machines are noisier than the build machine, so their numbers may only be good for spotting a change.
 
-**A check in this table exists only if something in `.github/` carries it out:** a workflow for the automatic ones, and the pull request template for the two sections. Formatting, lints and tests block a merge: `main` requires them to pass. While we calibrate, a speed number that gets worse is reported and doesn't block.
+**The CI checks in this table are the workflows in `.github/workflows/`.** If there is no workflow for one, it doesn't exist yet. The two pull request sections come from the template in `.github/`. Formatting, lints and tests block a merge: `main` requires them to pass. While we calibrate, a speed number that gets worse is reported and doesn't block.
 
 | | The constraint | How it's checked | What the design does for it |
 | --- | --- | --- | --- |
