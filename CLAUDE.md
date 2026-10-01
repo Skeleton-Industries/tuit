@@ -41,3 +41,9 @@ We adopt common guides and don't write our own.
 - The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote.
 - History is kept as it happened. No squashing, no force-pushing, and no going back to fix old commits. A mistake is fixed with a new commit.
 - Pull requests are merged with a merge commit. `git log --first-parent main` gives one line per pull request.
+
+## Review
+
+- Before a pull request opens, a second agent that didn't write the change reads it, with the job of finding what's wrong. The lead arranges this.
+- It covers docs and the pull request description as well as code.
+- What reaches JB is the version the lead will stand behind. If JB finds dead code, circular logic or a false claim, the review failed.
