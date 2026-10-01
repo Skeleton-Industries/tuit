@@ -84,7 +84,7 @@ Undoing it is mostly mechanical. A crate folds back into a module by moving a fo
 
 tuit has to be fast, secure and maintainable, and each of those has to be shown, not taken on trust. The numbers are starting targets, measured on the build machine. We'll tune them as we learn what good looks like. Where the benchmark runs isn't settled: CI's machines are noisier than the build machine, so their numbers may only be good for spotting a change.
 
-**None of these checks exists yet.** They're built straight after the skeleton and before the first feature, so the first real code is measured from the start. While we calibrate, a speed number that gets worse is reported on the pull request and doesn't block it. The other checks block.
+**None of these checks exists yet.** They're built straight after the skeleton and before the first feature, so the first real code is measured from the start. While we calibrate, a speed number that gets worse is reported on the pull request and doesn't block it. The other checks are meant to block. That needs a repo setting only an owner can change, and it isn't set yet.
 
 | | The constraint | How it's checked | What the design does for it |
 | --- | --- | --- | --- |
