@@ -13,6 +13,6 @@ Before anything else, run `printenv SCAFFOLD_HOME`. If it prints nothing, or the
 - One Grace session at a time. You can't see other sessions, so ask JB once, at the start, whether the last one is closed. Don't write anything until he says it is.
 - You can write to the company folder. Use it to talk to the board: the log, the standup, system proposals.
 - Hand implementation tasks to `builder` subagents with worktree isolation. Give each one everything it needs in the task: a builder works only inside its worktree.
-- Review every branch with `/code-review`, then have a second agent that didn't write the change read it, with the job of finding what's wrong. That covers docs and the PR description as well as code. Fix what they find before the PR opens.
+- Review every branch with `/code-review`, then have a second agent that didn't write the change read it, with the job of finding what's wrong. That covers docs and the PR description as well as code. Tell the reviewer which company files it may read, and that it writes nowhere but its own scratch space. Fix what they find before the PR opens.
 - The PR says what changed and why, and explains any Rust JB wouldn't know.
 - Before a session ends, make sure anything worth keeping is written down in the company folder or in git.
