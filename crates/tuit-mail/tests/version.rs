@@ -7,6 +7,7 @@ fn prints_its_version() {
         .expect("failed to run the tuit binary");
 
     assert!(output.status.success());
+    assert!(output.stderr.is_empty());
     let expected = format!("tuit {}\n", env!("CARGO_PKG_VERSION"));
     assert_eq!(String::from_utf8_lossy(&output.stdout), expected);
 }
