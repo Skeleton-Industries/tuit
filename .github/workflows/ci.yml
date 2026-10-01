@@ -10,6 +10,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # The Rust version CI uses. Bump it on purpose, not by accident.
+  RUSTUP_TOOLCHAIN: "1.98.1"
 
 jobs:
   check:
@@ -18,8 +20,8 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v7
 
-      - name: Install the stable Rust toolchain
-        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt --component clippy
 
       - name: Show the cargo version
         run: cargo --version
