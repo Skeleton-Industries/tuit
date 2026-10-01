@@ -22,7 +22,7 @@ The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. 
   - `cargo clippy --workspace --all-targets -- -D warnings`
   - `cargo test --workspace`
 
-  Run `cargo fmt --all` first to format. The flags matter. Without `-D warnings`, Clippy prints its warnings and still exits clean. Without `--all-targets`, it skips the tests.
+  Run `cargo fmt --all` first to format. The flags matter. Without `-D warnings`, Clippy prints its warnings and still exits clean. Without `--all-targets`, it doesn't lint test code.
 
 ## Style
 
