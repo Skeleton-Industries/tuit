@@ -45,6 +45,6 @@ We adopt common guides and don't write our own.
 
 ## Review
 
-- Before a pull request opens, a second agent that didn't write the change reads it, with the job of finding what's wrong. The lead arranges this.
+- Before a pull request opens, a reviewing agent reads the change, with the job of finding what's wrong. The reviewer is neither the author nor the lead who opens the pull request. The lead arranges this.
 - It covers docs and the pull request description as well as code.
 - What reaches JB is the version the lead will stand behind. If JB finds dead code, circular logic or a false claim, the review failed.
