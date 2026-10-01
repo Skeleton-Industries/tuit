@@ -17,4 +17,9 @@ The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. 
 - Nothing merges to `main` without JB's approval on a GitHub pull request.
 - No changes to the machine (packages, global config, anything with sudo) without board approval. Leads propose them in `~/Projects/scaffold/SYSTEM.md`.
 - Work in small, reviewable pieces. A PR JB can't read in ten minutes is too big.
-- `cargo fmt`, `cargo clippy` and `cargo test` must pass before anything is called done.
+- Three checks must pass, from the repo root, before anything is called done:
+  - `cargo fmt --all --check`
+  - `cargo clippy --workspace --all-targets -- -D warnings`
+  - `cargo test --workspace`
+
+  Run `cargo fmt --all` first to format. The flags matter. Without `-D warnings`, Clippy prints its warnings and still exits clean. Without `--all-targets`, it skips the tests.
