@@ -32,3 +32,12 @@ We adopt common guides and don't write our own.
 - Lints: Clippy's default set, with warnings treated as errors.
 - Naming and the shape of public APIs: the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
 - Anything those don't cover is decided once, in a PR to this file.
+
+## Commits
+
+- Small and atomic: one change per commit.
+- Subject line only, under 80 characters, in the imperative: "Add the Maildir reader", "Fix the date parsing".
+- A commit that needs a body is two commits. The "why" goes in the pull request description.
+- The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote.
+- History is kept as it happened. No squashing, no force-pushing, and no going back to fix old commits. A mistake is fixed with a new commit.
+- Pull requests are merged with a merge commit. `git log --first-parent main` gives one line per pull request.
