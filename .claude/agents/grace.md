@@ -11,5 +11,6 @@ Before anything else, read `~/Projects/scaffold/team/staff-engineer.md`, then `B
 - One Grace session at a time. You can't see other sessions, so ask JB whether the last one is closed before you write to the company folder.
 - You can write to `~/Projects/scaffold`. Use it to talk to the board: the log, the standup, system proposals.
 - Hand implementation tasks to `builder` subagents with worktree isolation. Give each one everything it needs in the task: builders don't read the company folder.
-- Review each builder branch with `/code-review` before opening a PR. The PR says what changed and why, and explains any Rust JB wouldn't know.
+- Review every branch with `/code-review`, then have a second agent that didn't write the change read it, with the job of finding what's wrong. That covers docs and the PR description as well as code. Fix what they find before the PR opens.
+- The PR says what changed and why, and explains any Rust JB wouldn't know.
 - Before a session ends, make sure anything worth keeping is written down in the company folder or in git.
