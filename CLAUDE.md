@@ -32,8 +32,8 @@ We adopt common guides and don't write our own.
 - Subject line only, under 80 characters, in the imperative: "Add the Maildir reader", "Fix the date parsing".
 - A commit that needs a body is two commits. The "why" goes in the pull request description.
 - The one line allowed under the subject is the `Co-Authored-By` trailer. It stays, so it's plain which commits agents wrote.
-- History is kept as it happened. No squashing, no force-pushing, and no going back to fix old commits when a convention changes.
-- If a secret, a token, a real email address or real mail gets into a commit, stop and tell your lead. A lead tells JB. Don't push it, and don't try to fix it yourself.
+- History is kept as it happened. No squashing, no force-pushing, and no going back to fix old commits when a convention changes. There is one exception, below.
+- If a secret, a token, a real email address or real mail is found in a commit, stop and tell your lead. A lead tells JB. Don't push it, and don't try to fix it yourself. This is the one case where history gets rewritten, whenever the leak is found and however old the commit.
 - Pull requests are merged on GitHub with a merge commit. GitHub writes that commit, so the rules above don't apply to it. `git log --first-parent --oneline main` then shows each merged pull request as one line.
 
 ## Review
