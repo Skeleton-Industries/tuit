@@ -6,9 +6,9 @@ _Written on 1 October 2026, before the first line of Rust. It's a direction, not
 
 **Now:** a terminal email client that's usable, familiar and good to look at. The bar is lazygit, superfile and cliamp.
 
-**Later:** one place on your own machine where everything that piles up arrives, starting with email. You manage it, or an LLM you trust does. Today an LLM needs to speak to a hundred services to read your inbox. With tuit it speaks to one small local tool.
+**Later:** one place on your own machine where everything that piles up arrives, starting with email. You manage it, or an LLM you trust does. Today an LLM needs a separate integration for every service where things pile up. With tuit it speaks to one small local tool.
 
-There's no service behind it. You bring your own accounts, and your mail and passwords stay on your machine.
+tuit adds no service of its own. You bring your own accounts. Your mail and passwords go only to your mail provider, and to whatever LLM you choose to point at tuit.
 
 ## Three ways in, one core
 
@@ -16,62 +16,79 @@ There's no service behind it. You bring your own accounts, and your mail and pas
 | --- | --- | --- |
 | The full-screen app | `tuit` | lazygit |
 | One piece, inline in your terminal | `tuit compose` | pop |
-| Plain commands for scripts and LLMs | `tuit list --json` | git |
+| Plain commands for scripts and LLMs | `tuit list --json` | gh |
 
-All three are thin. Each one calls the same core, so a feature built for one is nearly free for the others.
+All three are thin. The logic is written once, in the core. Each way in adds only its own presentation: a screen and keys, or arguments and output.
 
 ```
-  full-screen app      inline forms       plain commands
+  full-screen app      inline pieces       plain commands
         \                   |                   /
          +------------------+------------------+
-         |   core: messages, decisions, rules  |
+         |           core: messages            |
+         |      (later: decisions, rules)      |
          +------------------+------------------+
-        /                   |                   \
-  Maildir on disk     IMAP sync (later)    sending (later)
+                            |
+                     Maildir on disk  <---  IMAP fetch (later)
 ```
+
+Fetching from the server is not a way of reading mail. It's a separate job that fills the Maildir. tuit only ever reads mail from disk.
 
 ## The one rule
 
 **The edges depend on the core. The core depends on none of them.**
 
-The core knows what a message is and what you can do with one. It doesn't know about files, the network or the terminal. Everything that touches the outside world is an edge: the Maildir reader, the screen, the command line, and later IMAP and sending.
+The core knows what a message is and what you can do with one. It doesn't touch files, the network or the terminal. Everything that touches the outside world is an edge: the Maildir reader, the screen, the command line, and later fetching and sending.
 
 Why it matters:
 
-- **Swapping is cheap.** A different mail store is a new edge. Nothing in the core changes.
+- **Swapping is contained.** A different mail store is a new edge. The core's contract with stores will grow as we learn (marking mail as read, for one), but the screens don't change.
 - **Testing is cheap.** The core can be tested with made-up messages, with no disk and no network.
-- **Risk is easy to find.** Code that handles passwords, talks to the network or deletes mail can only live in an edge, so a reviewer knows where to look.
+- **Risk is easier to find.** Code that handles passwords, talks to the network or deletes files belongs in an edge. The decision about *what* to delete is core logic, and needs just as careful a review.
 
-## How Rust holds us to it
+## How the rule is held
 
-If you know Rails, two ideas carry over.
+Two checks, and it's worth knowing which is which.
 
-- **Crates are like gems.** The repo is a *workspace*: several small crates built together. Each crate lists what it depends on in its own `Cargo.toml`. The core's list has no file, network or terminal crates in it, so core code that tried to open a socket wouldn't compile. The rule is checked by the compiler, not by good intentions.
-- **Traits are like interfaces.** A trait is a named set of methods, much like duck typing in Ruby, but checked at compile time. The core defines a trait such as `MailStore` ("can list messages, can fetch one"). The Maildir crate implements it. The app is handed "something that is a `MailStore`" and never learns which one.
+- **The compiler holds the direction.** Each crate lists the crates it may use in its `Cargo.toml`, and it can use no others. The core's list has none of our edge crates and no terminal or mail-protocol crates. Core code that tried to call them wouldn't compile, and Cargo refuses circular dependencies.
+- **A lint holds "no I/O in the core".** Rust's standard library can open files and sockets with no dependency at all, so the compiler alone won't stop that. Clippy, the linter, is configured for the core crate to reject the standard library's file, network and process types, and it runs on every pull request. It works from a list, so it catches the obvious cases. Review catches the rest.
+
+If you know Rails:
+
+- **Crates are packaged like gems**, and a workspace is like one repo holding several local gems. The difference that matters here: Ruby code can reach anything that's loaded, but a crate can only use the crates it lists.
+- **A trait is an interface**: a named set of methods that a type explicitly signs up to. It isn't duck typing. Having the right methods isn't enough; someone has to write `impl MailStore for Maildir`. The core defines a trait such as `MailStore` ("can list messages"). The Maildir crate implements it. The screen code is handed "something that is a `MailStore`" and never learns which one.
 
 Crates for the first slice:
 
 | Crate | Job | May depend on |
 | --- | --- | --- |
-| `tuit-core` | Messages, and the traits the edges implement | Nothing that does I/O |
+| `tuit-core` | Messages, and the traits the edges implement | No other crate of ours. Nothing that does I/O |
 | `tuit-maildir` | Reads a Maildir folder | `tuit-core` |
 | `tuit-tui` | Draws screens and handles keys | `tuit-core` |
-| `tuit-mail` | The `tuit` command. Wires the others together | All of the above |
+| `tuit-mail` | The `tuit` command: the plain commands, and wiring the others together | All of the above |
 
-The package is `tuit-mail` because `tuit` is taken on crates.io. The command you type is still `tuit`.
+The first slice runs on made-up mail in test folders. Real mail arrives with the IMAP fetch, which is the slice after.
+
+## Names
+
+The package is `tuit-mail` because `tuit` on crates.io is someone else's library. The command you type is `tuit`.
+
+Two things to know. Another crate, `tuit-bin`, already installs a command called `tuit`, so the two would clash on a machine that installed both. And our `tuit-*` names are free as of 1 October 2026 but not reserved. Whether to live with the clash is an open question below.
 
 ## Decisions so far
 
 | What | Why |
 | --- | --- |
-| Mail is read from a local Maildir (one file per message). Fetching from the server is a separate job that fills it. | Reading local files is fast and works offline. Other Unix tools can read the same folder. Changing where mail comes from doesn't touch the reader. |
-| Screens are built from pieces that don't know whether they fill the terminal or sit inline. | `tuit compose` and the compose screen inside the app are then the same code. Our terminal library, ratatui, can draw either way. |
-| Every action is a core function first, and a key press or command second. | The app, the inline forms and the command line can't drift apart. An LLM gets every feature a person has. |
-| Passwords live in the desktop keyring, never in a config file or this repo. | No service behind tuit means the machine is the only thing guarding them. |
-| Email is the only source we build for. | The core is "a thing that arrived, and a decision about it", so other sources can come later. We don't write code for sources we don't have. |
+| Mail is read from a local Maildir (one file per message). Fetching from the server is a separate job that fills it. | It works offline and needs no round trip to a server. Other Unix tools can read the same folder. Changing how mail is fetched doesn't touch the reader. |
+| The full-screen app and the inline pieces share the same widgets. | A compose form is drawn by the same code in both. Each mode has its own small setup and event loop, and an inline piece has a fixed height chosen at the start. Our terminal library, ratatui, supports both. |
+| Every action is a core function first, and a key press or command second. | The app, the inline pieces and the plain commands can't drift apart. An LLM gets every reading and sorting feature a person has. Sending is gated: see below. |
+| Passwords are never in a config file or in this repo. On a desktop they go in the system keyring. | A keyring keeps them encrypted on disk. It doesn't hide them from other programs running as you, including an LLM with a shell. |
+| The core models email for now. | We'll generalise when a second source exists, and not before. |
 
 ## Not decided yet
 
-- **Sending, and what an LLM may send.** Working assumption: anything not sent by a person's own key press lands as a draft and waits for approval.
-- **Where remembered decisions live.** Probably a small local database.
-- **Which accounts beyond IMAP.** IMAP with an app-specific password comes first.
+- **Sending, and what an LLM may send.** Working assumption: sending needs a person's approval. How tuit tells a person from a program is unsolved. A program can type a command or drive the app as easily as a person can.
+- **Passwords without a desktop.** Over SSH or from a scheduled job there's often no keyring to ask.
+- **Large folders.** Listing a Maildir means reading every file. That's fine for hundreds of messages and too slow for tens of thousands, so an index will be needed.
+- **Where remembered decisions live.** Probably a small local database, possibly the same one as the index.
+- **Which accounts.** IMAP with an app-specific password comes first, which covers iCloud, Gmail and Fastmail. Microsoft accounts need a different sign-in (OAuth) and aren't planned.
+- **The command name.** Keep `tuit` despite the clash with `tuit-bin`, or change it.
