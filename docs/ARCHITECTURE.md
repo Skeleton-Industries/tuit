@@ -70,7 +70,7 @@ The first slice runs on made-up mail in test folders. Real mail arrives with the
 
 ### Is this normal for Rust?
 
-Yes. A workspace is a standard part of Cargo, not something we built. ripgrep, Helix, Alacritty and the terminal mail client meli are all workspaces. meli splits a mail library, `melib`, from the app that uses it, which is the split we're making.
+Yes. A workspace is a standard part of Cargo, not something we built. ripgrep, Helix, Alacritty and the terminal mail client meli are all workspaces. meli splits a mail library, `melib`, from the app that uses it. Ours goes a step further: meli's library does its own network and file work, and our core doesn't.
 
 It isn't a constellation of gems. The crates live in one repo, share one lock file, and have no versions or releases between them. One command builds and tests them all. A change that crosses two crates is one commit, and the compiler checks both sides of it.
 
