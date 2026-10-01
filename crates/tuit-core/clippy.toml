@@ -2,6 +2,9 @@
 #
 # Clippy only knows what is on these lists. A path it can't find is reported as
 # a warning that does not fail the build, so check the output after editing.
+#
+# The lists apply to this crate's tests too: no println!, dbg! or fixture files
+# there. Core tests use made-up values held in the test itself.
 
 disallowed-types = [
     { path = "std::fs::File", reason = "the core does no file access" },
