@@ -63,4 +63,9 @@ disallowed-methods = [
     { path = "std::env::home_dir", reason = "the core does not read the environment" },
     { path = "std::env::temp_dir", reason = "the core does not read the environment" },
     { path = "std::env::current_exe", reason = "the core does not read the environment" },
+    { path = "std::io::stdin", reason = "the core does not touch the terminal" },
+    { path = "std::io::stdout", reason = "the core does not touch the terminal" },
+    { path = "std::io::stderr", reason = "the core does not touch the terminal" },
+    { path = "std::io::_print", reason = "the core does not touch the terminal" },
+    { path = "std::io::_eprint", reason = "the core does not touch the terminal" },
 ]
