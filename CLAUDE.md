@@ -17,7 +17,7 @@ The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. 
 - Nothing merges to `main` without JB's approval on a GitHub pull request.
 - No changes to the machine (packages, global config, anything with sudo) without board approval. Leads propose them in `~/Projects/scaffold/SYSTEM.md`.
 - Work in small, reviewable pieces. A PR JB can't read in ten minutes is too big.
-- Three checks must pass, from the repo root, before anything is called done:
+- Once the repo has a `Cargo.toml`, three checks must pass before anything is called done. Run them from the root of your own checkout: your worktree, if you're in one.
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets -- -D warnings`
   - `cargo test --workspace`
