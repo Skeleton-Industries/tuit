@@ -78,7 +78,15 @@ Four crates before any code is more structure than a project this size needs on 
 
 tuit has to be fast, secure and maintainable, and each of those has to be shown, not taken on trust. The numbers are starting targets, measured on the build machine. We'll tune them as we learn what good looks like. Where the benchmark runs isn't settled: CI's machines are noisier than the build machine, so their numbers may only be good for spotting a change.
 
-**Some of these checks exist and some don't.** Formatting, lints, tests, the core lint and the `unsafe` ban arrived with the skeleton. The benchmark, the vulnerability check and a pull request template for the two sections come next, before the first feature, so the first real code is measured from the start. While we calibrate, a speed number that gets worse is reported on the pull request and doesn't block it. Formatting, lints and tests block a merge: `main` requires CI to pass.
+Which of the checks in the table below exist today:
+
+- **Formatting, lints and tests:** run in CI on every pull request, and block a merge. `main` requires them to pass.
+- **The vulnerability check:** not yet.
+- **The core tripwire and the `unsafe` ban:** in place.
+- **The benchmark:** not yet. Once it runs, a number that gets worse will be reported and won't block, while we calibrate.
+- **The two pull request sections:** in the template in `.github/`, required by a house rule, and held by review.
+
+The vulnerability check and the benchmark come before the first feature, so the first real code is measured from the start.
 
 | | The constraint | How it's checked | What the design does for it |
 | --- | --- | --- | --- |
