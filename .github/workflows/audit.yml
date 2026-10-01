@@ -14,8 +14,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # The Rust version CI uses. Bump it on purpose, not by accident.
-  RUSTUP_TOOLCHAIN: "1.98.1"
 
 jobs:
   audit:
@@ -28,7 +26,8 @@ jobs:
           persist-credentials: false
 
       - name: Install the pinned Rust toolchain
-        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+        # With no version named, rustup installs the one in rust-toolchain.toml.
+        run: rustup toolchain install
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked --version 0.22.2

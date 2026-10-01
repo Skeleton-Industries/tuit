@@ -10,8 +10,6 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # The Rust version CI uses. Bump it on purpose, not by accident.
-  RUSTUP_TOOLCHAIN: "1.98.1"
 
 jobs:
   speed:
@@ -24,7 +22,8 @@ jobs:
           persist-credentials: false
 
       - name: Install the pinned Rust toolchain
-        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+        # With no version named, rustup installs the one in rust-toolchain.toml.
+        run: rustup toolchain install
 
       # No pipe here, on purpose. GitHub's default shell doesn't set pipefail,
       # so a failing cargo bench in front of a pipe would leave the step
