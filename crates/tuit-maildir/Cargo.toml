@@ -1,0 +1,11 @@
+[package]
+name = "tuit-maildir"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+tuit-core = { workspace = true }

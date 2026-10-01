@@ -22,7 +22,7 @@ This file is shared house rules. It doesn't say who you are: that comes from you
 We adopt common guides and don't write our own.
 
 - Formatting: `rustfmt` with its defaults. No overrides.
-- Lints: Clippy's default set, with warnings treated as errors.
+- Lints: Clippy's default set, with warnings treated as errors. One addition: in `tuit-core`, Clippy also refuses the print macros and a short list of I/O calls, as a tripwire. See `docs/ARCHITECTURE.md`.
 - Naming and the shape of public APIs: the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
 - Anything those don't cover is decided once, in a PR to this file.
 
@@ -40,4 +40,5 @@ We adopt common guides and don't write our own.
 
 - Before a pull request opens, a reviewing agent reads the change, with the job of finding what's wrong. The reviewer is neither the author nor the lead who opens the pull request. The lead arranges this.
 - It covers docs and the pull request description as well as code.
+- A pull request that touches `crates/tuit-core` says so in its description, and its reviewers check the change for I/O: files, the network, running programs, the environment, the terminal. Review holds that rule. The lint there only catches the obvious.
 - What reaches JB is the version the lead will stand behind. If JB finds dead code, circular logic or a false claim, the review failed.

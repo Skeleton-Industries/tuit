@@ -1,0 +1,33 @@
+# A tripwire for "no I/O in the core", not a wall. Review holds that rule; this
+# catches the obvious accidents. It applies to this crate only, tests included.
+# See docs/ARCHITECTURE.md.
+#
+# The lists are short on purpose. Add an entry only when a review finds a
+# breach that got through, and say which breach in the pull request.
+#
+# A path Clippy can't find is reported as a warning that does not fail the
+# build, so check the output after editing.
+#
+# Printing is refused by the #![deny] line at the top of src/lib.rs, and
+# allowed in tests by the two settings below.
+
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+
+disallowed-types = [
+    { path = "std::fs::File", reason = "the core does no file access" },
+    { path = "std::fs::OpenOptions", reason = "the core does no file access" },
+    { path = "std::net::TcpStream", reason = "the core does no network access" },
+    { path = "std::net::TcpListener", reason = "the core does no network access" },
+    { path = "std::net::UdpSocket", reason = "the core does no network access" },
+    { path = "std::process::Command", reason = "the core does not run programs" },
+]
+
+disallowed-methods = [
+    { path = "std::fs::read", reason = "the core does no file access" },
+    { path = "std::fs::read_to_string", reason = "the core does no file access" },
+    { path = "std::fs::write", reason = "the core does no file access" },
+    { path = "std::fs::read_dir", reason = "the core does no file access" },
+    { path = "std::fs::remove_file", reason = "the core does no file access" },
+    { path = "std::env::var", reason = "the core does not read the environment" },
+]
