@@ -40,6 +40,6 @@ We adopt common guides and don't write our own.
 
 - Before a pull request opens, a reviewing agent reads the change, with the job of finding what's wrong. The reviewer is neither the author nor the lead who opens the pull request. The lead arranges this.
 - It covers docs and the pull request description as well as code.
-- A pull request's description has the sections in `.github/pull_request_template.md`. "Risk" and "New dependencies" are never left out: they say "None" when there is none.
+- A pull request's description has all six sections in `.github/pull_request_template.md`, each answered, "None" or "No" included. Other sections may be added.
 - A pull request that touches `crates/tuit-core` says so in its description, and its reviewers check the change for I/O: files, the network, running programs, the environment, the terminal. Review holds that rule. The lint there only catches the obvious.
 - What reaches JB is the version the lead will stand behind. If JB finds dead code, circular logic or a false claim, the review failed.
