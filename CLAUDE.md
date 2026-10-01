@@ -9,7 +9,7 @@ This file is shared house rules. It doesn't say who you are: that comes from you
 The company lives in `~/Projects/scaffold`, synced by Syncthing and not in git. `BRIEF.md` says what we're doing and why, `LOG.md` says what happened, `PLAN.md` is the one list of work, `WAYS-OF-WORKING.md` says how we work, and `team/` holds each role's brief.
 
 - **Leads** (for example `grace`) read it and write to it, to talk to the board.
-- **Everyone else** stays out of it. Your lead gives you what you need in the task.
+- **Everyone else** stays out of it, except for a file your lead names in the task, which you may read. Your lead gives you what you need in the task.
 
 ## Rules
 
