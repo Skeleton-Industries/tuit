@@ -1,0 +1,6 @@
+# The Rust version tuit is built with, on every machine and in CI.
+# Bump it on purpose, not by accident.
+[toolchain]
+channel = "1.98.1"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
