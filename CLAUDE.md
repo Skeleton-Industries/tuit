@@ -22,7 +22,7 @@ This file is shared house rules. It doesn't say who you are: that comes from you
 We adopt common guides and don't write our own.
 
 - Formatting: `rustfmt` with its defaults. No overrides.
-- Lints: Clippy's default set, with warnings treated as errors.
+- Lints: Clippy's default set, with warnings treated as errors. One addition: in `tuit-core`, Clippy also refuses the print macros and a short list of I/O calls, as a tripwire. See `docs/ARCHITECTURE.md`.
 - Naming and the shape of public APIs: the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/).
 - Anything those don't cover is decided once, in a PR to this file.
 
