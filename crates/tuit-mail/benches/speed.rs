@@ -41,7 +41,7 @@ fn report(name: &str, mut timings: Vec<Duration>, target_ms: f64) -> String {
         ms(timings[0]),
         ms(timings[n - 1]),
     );
-    if median > target_ms {
+    if median >= target_ms {
         line.push_str(" OVER TARGET");
     }
     line
