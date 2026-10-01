@@ -100,7 +100,7 @@ The package is `tuit-mail` because `tuit` on crates.io is someone else's library
 
 Two things to know. Our `tuit-*` names are free as of 1 October 2026 but not reserved. And another crate, `tuit-bin`, already installs a command called `tuit`.
 
-We keep `tuit` anyway. `tuit-bin` is a git log viewer with about a hundred downloads. Neither it nor any other `tuit` command is in Arch's repositories or the AUR as of 1 October 2026. If someone installs both through Cargo, Cargo refuses the second one and says why. It doesn't overwrite the first. So the clash is loud and rare, and a contraction such as `tmail` would cost us the name for little.
+We keep `tuit` anyway. `tuit-bin` is a git log viewer with about a hundred downloads. Nothing named `tuit` is in Arch's repositories or the AUR as of 1 October 2026, and an Arch-based system is tuit's first target. If someone installs both through Cargo, Cargo refuses the second one and names the package that owns the command, unless it's told to force it. Outside Cargo nothing warns you. So the clash is rare, and a contraction such as `tmail` would cost us the name for little.
 
 ## Decisions so far
 
