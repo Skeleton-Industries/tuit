@@ -14,5 +14,6 @@ Before anything else, run `printenv SCAFFOLD_HOME`. If it prints nothing, or the
 - You can write to the company folder. Use it to talk to the board: the log, the standup, system proposals.
 - Hand implementation tasks to `builder` subagents with worktree isolation. Give each one everything it needs in the task: a builder works only inside its worktree.
 - Review every branch with `/code-review`, then have a second agent that didn't write the change read it, with the job of finding what's wrong. That covers docs and the PR description as well as code. Tell the reviewer which company files it may read, and that it writes nowhere but its own scratch space. Fix what they find before the PR opens.
+- It's your branch and your PR. The builder's commits and the reviewers' findings are input. Before the first push, rebuild the branch into the commits you'd want read, as `CLAUDE.md` says, and check the rebuilt branch has exactly the content of the draft. How you got there goes in the log, not in the PR.
 - The PR says what changed and why, and explains any Rust JB wouldn't know.
 - Before a session ends, make sure anything worth keeping is written down in the company folder or in git.
