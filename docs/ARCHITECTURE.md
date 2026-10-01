@@ -68,6 +68,16 @@ Crates for the first slice:
 
 The first slice runs on made-up mail in test folders. Real mail arrives with the IMAP fetch, which is the slice after.
 
+### Is this normal for Rust?
+
+Yes. A workspace is a standard part of Cargo, not something we built. ripgrep, Helix, Alacritty and the terminal mail client meli are all workspaces. meli splits a mail library, `melib`, from the app that uses it, which is the split we're making.
+
+It isn't a constellation of gems. The crates live in one repo, share one lock file, and have no versions or releases between them. One command builds and tests them all. A change that crosses two crates is one commit, and the compiler checks both sides of it.
+
+The cost: four crates before any code is more structure than a project this size needs on day one. The usual advice is to start with one crate and split when it hurts. We split now for one reason: the direction rule is only checked at a crate boundary. Inside a single crate, modules can depend on each other in both directions and nothing objects. A rule the compiler holds doesn't depend on a builder having read this page.
+
+Undoing it is mechanical. A crate folds back into a module by moving a folder and changing the import paths, and the compiler lists every path that needs changing.
+
 ## Names
 
 The package is `tuit-mail` because `tuit` on crates.io is someone else's library. The command you type is `tuit`.
