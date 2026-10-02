@@ -1,6 +1,6 @@
 # tuit
 
-A terminal email client, written in Rust, that might grow into a general inbox handler. Built mostly by agents as part of Scaffold.
+A terminal email client, written in Rust, that might grow into a general inbox handler. Built mostly by agents as part of Skeleton.
 
 This file is shared house rules. It doesn't say who you are: that comes from your agent file in `.claude/agents/`, started with `claude --agent <name>`.
 
