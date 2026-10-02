@@ -9,4 +9,4 @@ mod message;
 mod store;
 
 pub use message::{MessageId, MessageSummary, Timestamp};
-pub use store::{MailStore, StoreError};
+pub use store::{MailStore, StoreError, list_newest_first};
