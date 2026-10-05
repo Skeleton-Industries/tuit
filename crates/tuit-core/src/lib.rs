@@ -4,3 +4,9 @@
 //! network, the process, the environment or the terminal.
 
 #![deny(clippy::print_stdout, clippy::print_stderr, clippy::dbg_macro)]
+
+mod message;
+mod store;
+
+pub use message::{MessageId, MessageSummary, Timestamp};
+pub use store::{MailStore, StoreError, list_newest_first};
