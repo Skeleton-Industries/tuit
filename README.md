@@ -24,7 +24,7 @@ Run the speed benchmark:
 cargo bench -p tuit-mail --bench speed
 ```
 
-It measures two things: running the `tuit` command, and listing a Maildir of 10,000 made-up messages. For each it prints the median, fastest and slowest time, next to the target.
+It measures two things: running `tuit --version`, and listing a Maildir of 10,000 made-up messages. For each it prints the median, fastest and slowest time, next to the target.
 
 The three checks every change must pass:
 

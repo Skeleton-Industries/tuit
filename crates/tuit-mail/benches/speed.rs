@@ -1,9 +1,13 @@
-//! Speed benchmark. It measures two things. Start-up is the time to run the
-//! `tuit` command from start to exit. That is the whole command, not yet the
-//! "first screen" the target is about, because there is no screen yet. Listing
-//! is the time to read and sort a Maildir of 10,000 messages. To add a
-//! measurement, write a function that returns its timings and add a `report`
-//! line for it in `main`.
+//! Speed benchmark. It measures two things.
+//!
+//! Process start is the time to run `tuit --version` from start to exit. It is not "time to first
+//! screen", which the start-up target is really about: that would need a terminal to draw on, and
+//! a benchmark has none. It shows the cost of launching the process and nothing of the screen.
+//!
+//! Listing is the time to read and sort a Maildir of 10,000 messages.
+//!
+//! To add a measurement, write a function that returns its timings and add a `report` line for it
+//! in `main`.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -15,17 +19,18 @@ use tuit_maildir::Maildir;
 
 const WARM_UP_RUNS: usize = 10;
 const TIMED_RUNS: usize = 100;
-const START_UP_TARGET_MS: f64 = 100.0;
+const PROCESS_START_TARGET_MS: f64 = 100.0;
 const LIST_MESSAGES: usize = 10_000;
 const LIST_WARM_UP_RUNS: usize = 1;
 const LIST_TIMED_RUNS: usize = 10;
 const LIST_TARGET_MS: f64 = 200.0;
 
-/// Times whole runs of the `tuit` command. Panics if any run fails.
-fn start_up() -> Vec<Duration> {
+/// Times whole runs of `tuit --version`. Panics if any run fails.
+fn process_start() -> Vec<Duration> {
     let run = || {
         let started = Instant::now();
         let status = Command::new(env!("CARGO_BIN_EXE_tuit"))
+            .arg("--version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()
@@ -160,6 +165,13 @@ fn report(name: &str, mut timings: Vec<Duration>, target_ms: f64) -> String {
 fn main() {
     // Arguments are ignored: Cargo passes `--bench`.
     println!("tuit speed (rough: one machine, one moment)");
-    println!("{}", report("start-up", start_up(), START_UP_TARGET_MS));
+    println!(
+        "{}",
+        report(
+            "process start (tuit --version)",
+            process_start(),
+            PROCESS_START_TARGET_MS
+        )
+    );
     println!("{}", report("list 10,000", list(), LIST_TARGET_MS));
 }
