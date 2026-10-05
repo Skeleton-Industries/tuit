@@ -15,3 +15,5 @@ unsafe_code = "forbid"
 tuit-core = { path = "crates/tuit-core" }
 tuit-maildir = { path = "crates/tuit-maildir" }
 tuit-tui = { path = "crates/tuit-tui" }
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm"] }
+unicode-segmentation = "1.13.3"

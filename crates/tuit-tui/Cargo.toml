@@ -10,3 +10,5 @@ workspace = true
 
 [dependencies]
 tuit-core = { workspace = true }
+ratatui = { workspace = true }
+unicode-segmentation = { workspace = true }
