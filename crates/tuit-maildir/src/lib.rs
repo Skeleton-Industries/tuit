@@ -10,6 +10,9 @@ use mail_parser::MessageParser;
 use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp};
 
 /// How much of a file is read, at most, when looking for the end of its headers.
+/// A safety limit, set by judgement and not by measurement: real headers are
+/// far smaller, and a file with no blank line would otherwise be read to its
+/// end.
 const MAX_HEADER_BYTES: u64 = 1024 * 1024;
 
 /// One Maildir folder on disk.
