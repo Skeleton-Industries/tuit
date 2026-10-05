@@ -46,6 +46,10 @@ fn unix(summary: &MessageSummary) -> Option<i64> {
     summary.date.map(|d| d.unix_seconds())
 }
 
+/// The date in `PLAIN`, and in most other test messages, as seconds since
+/// 1970: Tuesday 14 November 2023 at 22:13:20 UTC. Chosen for being round.
+const PLAIN_DATE: i64 = 1_700_000_000;
+
 const PLAIN: &str = "From: Alice Example <alice@example.com>\n\
 Subject: Hello there\n\
 Date: Tue, 14 Nov 2023 22:13:20 +0000\n\
@@ -60,7 +64,7 @@ fn a_plain_message() {
     assert_eq!(m.id.as_str(), "1.M1P1.host");
     assert_eq!(m.from, "Alice Example");
     assert_eq!(m.subject, "Hello there");
-    assert_eq!(unix(&m), Some(1_700_000_000));
+    assert_eq!(unix(&m), Some(PLAIN_DATE));
 }
 
 #[test]
@@ -71,7 +75,7 @@ fn a_date_with_an_offset_is_converted_to_utc() {
         "a",
         "From: a@example.com\nDate: Wed, 15 Nov 2023 00:13:20 +0200\n\n",
     );
-    assert_eq!(unix(&only(maildir.list())), Some(1_700_000_000));
+    assert_eq!(unix(&only(maildir.list())), Some(PLAIN_DATE));
 }
 
 #[test]
@@ -194,7 +198,7 @@ fn crlf_line_endings() {
     let m = only(maildir.list());
     assert_eq!(m.from, "Eve Example");
     assert_eq!(m.subject, "Windows");
-    assert_eq!(unix(&m), Some(1_700_000_000));
+    assert_eq!(unix(&m), Some(PLAIN_DATE));
 }
 
 #[test]
@@ -215,7 +219,7 @@ fn a_folded_from_and_a_folded_date_are_joined() {
     );
     let m = only(maildir.list());
     assert_eq!(m.from, "Heidi Example");
-    assert_eq!(unix(&m), Some(1_700_000_000));
+    assert_eq!(unix(&m), Some(PLAIN_DATE));
 }
 
 #[test]
@@ -231,7 +235,7 @@ fn header_names_match_in_any_case() {
     let m = only(maildir.list());
     assert_eq!(m.from, "Ivan Example");
     assert_eq!(m.subject, "Shouting");
-    assert_eq!(unix(&m), Some(1_700_000_000));
+    assert_eq!(unix(&m), Some(PLAIN_DATE));
 }
 
 /// A message should have one of each. When it has two, the parser gives the
