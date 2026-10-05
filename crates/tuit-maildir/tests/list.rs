@@ -94,6 +94,68 @@ fn encoded_words_are_decoded() {
 }
 
 #[test]
+fn encoded_words_in_older_western_character_sets_are_decoded() {
+    let maildir = TestMaildir::new("latin");
+    // EB and E9 are "ë" and "é" in ISO-8859-1. 93, 94 and 80 are curly quotes
+    // and the euro sign in windows-1252.
+    maildir.add(
+        "cur",
+        "a",
+        "From: =?ISO-8859-1?Q?Zo=EB_Example?= <zoe@example.org>\n\
+         Subject: =?ISO-8859-1?Q?Caf=E9?=\n\n",
+    );
+    maildir.add(
+        "cur",
+        "b",
+        "Subject: =?windows-1252?Q?=93quoted=94_=80?=\n\n",
+    );
+    let messages = maildir.list();
+    assert_eq!(messages[0].from, "Zoë Example");
+    assert_eq!(messages[0].subject, "Café");
+    assert_eq!(messages[1].subject, "\u{201c}quoted\u{201d} \u{20ac}");
+}
+
+/// Headers are meant to be plain ASCII, with anything else encoded. Mail
+/// that puts raw bytes there anyway is read as UTF-8, and a lone byte that
+/// isn't becomes the replacement character.
+#[test]
+fn raw_bytes_that_are_not_utf8_become_the_replacement_character() {
+    let maildir = TestMaildir::new("raw-bytes");
+    maildir.add(
+        "cur",
+        "a",
+        b"From: Zo\xeb Example <zoe@example.org>\nSubject: Caf\xe9\n\n",
+    );
+    maildir.add(
+        "cur",
+        "b",
+        "From: Zoë Example <zoe@example.org>\nSubject: Café ☕\n\n",
+    );
+    let messages = maildir.list();
+    assert_eq!(messages[0].from, "Zo\u{fffd} Example");
+    assert_eq!(messages[0].subject, "Caf\u{fffd}");
+    assert_eq!(messages[1].from, "Zoë Example");
+    assert_eq!(messages[1].subject, "Café ☕");
+}
+
+#[test]
+fn a_word_in_an_unknown_character_set_is_read_as_utf8() {
+    let maildir = TestMaildir::new("unknown-charset");
+    // C3 A9 is "é" in UTF-8. EB and E9 alone are not UTF-8.
+    maildir.add("cur", "a", "Subject: =?x-made-up?Q?Caf=C3=A9?=\n\n");
+    maildir.add(
+        "cur",
+        "b",
+        "From: =?x-made-up?Q?Zo=EB_Example?= <zoe@example.org>\n\
+         Subject: =?x-made-up?Q?Caf=E9?=\n\n",
+    );
+    let messages = maildir.list();
+    assert_eq!(messages[0].subject, "Café");
+    assert_eq!(messages[1].from, "Zo\u{fffd} Example");
+    assert_eq!(messages[1].subject, "Caf\u{fffd}");
+}
+
+#[test]
 fn an_address_with_no_name() {
     let maildir = TestMaildir::new("no-name");
     maildir.add("cur", "a", "From: bob@example.org\nSubject: Hi\n\n");
