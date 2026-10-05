@@ -783,6 +783,7 @@ version = "0.1.0"
 name = "tuit-mail"
 version = "0.1.0"
 dependencies = [
+ "ratatui",
  "tuit-core",
  "tuit-maildir",
  "tuit-tui",

@@ -1,10 +1,15 @@
-//! Speed benchmark. It measures two things.
+//! Speed benchmark. It measures three things.
 //!
 //! Process start is the time to run `tuit --version` from start to exit. It is not "time to first
 //! screen", which the start-up target is really about: that would need a terminal to draw on, and
 //! a benchmark has none. It shows the cost of launching the process and nothing of the screen.
 //!
 //! Listing is the time to read and sort a Maildir of 10,000 messages.
+//!
+//! Redraw is the time to handle one key press and draw the result, with 10,000 messages loaded,
+//! into ratatui's in-memory `TestBackend` at 120 by 40. It leaves out writing to a real terminal
+//! (the escape sequences, the pipe or pty, and the terminal program's own drawing), so the number
+//! a person sees is somewhat higher.
 //!
 //! To add a measurement, write a function that returns its timings and add a `report` line for it
 //! in `main`.
@@ -15,7 +20,12 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use ratatui::Terminal;
+use ratatui::backend::TestBackend;
+use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use tuit_core::{MessageId, MessageSummary, Timestamp};
 use tuit_maildir::Maildir;
+use tuit_tui::MessageList;
 
 const WARM_UP_RUNS: usize = 10;
 const TIMED_RUNS: usize = 100;
@@ -24,6 +34,11 @@ const LIST_MESSAGES: usize = 10_000;
 const LIST_WARM_UP_RUNS: usize = 1;
 const LIST_TIMED_RUNS: usize = 10;
 const LIST_TARGET_MS: f64 = 200.0;
+const REDRAW_MESSAGES: usize = 10_000;
+const REDRAW_SCREEN: (u16, u16) = (120, 40);
+const REDRAW_WARM_UP_RUNS: usize = 20;
+const REDRAW_TIMED_RUNS: usize = 200;
+const REDRAW_TARGET_MS: f64 = 16.0;
 
 /// Times whole runs of `tuit --version`. Panics if any run fails.
 fn process_start() -> Vec<Duration> {
@@ -145,6 +160,48 @@ fn list() -> Vec<Duration> {
     timings
 }
 
+/// Times handling one key press and drawing the result, with 10,000 made-up messages loaded.
+/// Each press is PageDown, so every row on the screen changes; every hundredth is `g`, back to
+/// the top.
+fn redraw() -> Vec<Duration> {
+    let messages = (0..REDRAW_MESSAGES)
+        .map(|n| MessageSummary {
+            id: MessageId::new(format!("m{n}")),
+            from: format!("Sender Number {n}"),
+            subject: format!("Made-up message number {n} with a subject of ordinary length"),
+            date: Some(Timestamp::from_unix_seconds(
+                1_700_000_000 + (n as i64 * 7_919) % 31_536_000,
+            )),
+        })
+        .collect();
+    let mut list = MessageList::new(messages);
+    let mut terminal =
+        Terminal::new(TestBackend::new(REDRAW_SCREEN.0, REDRAW_SCREEN.1)).expect("no backend");
+    terminal
+        .draw(|frame| list.draw(frame))
+        .expect("draw failed");
+    let mut step = 0;
+    let mut run = || {
+        step += 1;
+        let code = if step % 100 == 0 {
+            KeyCode::Char('g')
+        } else {
+            KeyCode::PageDown
+        };
+        let event = Event::Key(KeyEvent::new(code, KeyModifiers::NONE));
+        let started = Instant::now();
+        list.handle_event(&event);
+        terminal
+            .draw(|frame| list.draw(frame))
+            .expect("draw failed");
+        started.elapsed()
+    };
+    for _ in 0..REDRAW_WARM_UP_RUNS {
+        run();
+    }
+    (0..REDRAW_TIMED_RUNS).map(|_| run()).collect()
+}
+
 /// Turns timings into a "median, min, max" line for the named measurement.
 fn report(name: &str, mut timings: Vec<Duration>, target_ms: f64) -> String {
     timings.sort();
@@ -174,4 +231,12 @@ fn main() {
         )
     );
     println!("{}", report("list 10,000", list(), LIST_TARGET_MS));
+    println!(
+        "{}",
+        report(
+            "redraw, 10,000 loaded (TestBackend)",
+            redraw(),
+            REDRAW_TARGET_MS
+        )
+    );
 }
