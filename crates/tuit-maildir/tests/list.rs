@@ -37,7 +37,7 @@ impl Drop for TestMaildir {
     }
 }
 
-fn only(mut messages: Vec<MessageSummary>) -> MessageSummary {
+fn the_one_message(mut messages: Vec<MessageSummary>) -> MessageSummary {
     assert_eq!(messages.len(), 1, "{messages:?}");
     messages.remove(0)
 }
@@ -60,7 +60,7 @@ Body text.\n";
 fn a_plain_message() {
     let maildir = TestMaildir::new("plain");
     maildir.add("cur", "1.M1P1.host", PLAIN);
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.id.as_str(), "1.M1P1.host");
     assert_eq!(m.from, "Alice Example");
     assert_eq!(m.subject, "Hello there");
@@ -75,7 +75,7 @@ fn a_date_with_an_offset_is_converted_to_utc() {
         "a",
         "From: a@example.com\nDate: Wed, 15 Nov 2023 00:13:20 +0200\n\n",
     );
-    assert_eq!(unix(&only(maildir.list())), Some(PLAIN_DATE));
+    assert_eq!(unix(&the_one_message(maildir.list())), Some(PLAIN_DATE));
 }
 
 #[test]
@@ -88,7 +88,7 @@ fn encoded_words_are_decoded() {
         "From: =?UTF-8?Q?Zo=C3=AB_Example?= <zoe@example.org>\n\
          Subject: =?UTF-8?B?Q2Fmw6kg4piV?=\n\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "Zoë Example");
     assert_eq!(m.subject, "Café ☕");
 }
@@ -107,7 +107,7 @@ fn an_address_with_no_name() {
 fn no_from_and_no_subject() {
     let maildir = TestMaildir::new("no-subject");
     maildir.add("cur", "a", "Date: Tue, 14 Nov 2023 22:13:20 +0000\n\n");
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "");
     assert_eq!(m.subject, "");
 }
@@ -159,7 +159,7 @@ fn tmp_dot_files_and_subfolders_are_ignored() {
     maildir.add("new", ".another", PLAIN);
     fs::create_dir(maildir.root.join("cur").join("subfolder")).unwrap();
     maildir.add("cur", "real", PLAIN);
-    assert_eq!(only(maildir.list()).id.as_str(), "real");
+    assert_eq!(the_one_message(maildir.list()).id.as_str(), "real");
 }
 
 #[test]
@@ -181,7 +181,7 @@ fn the_id_is_cut_at_the_first_colon() {
 fn headers_only_with_no_body_and_no_blank_line() {
     let maildir = TestMaildir::new("no-blank-line");
     maildir.add("cur", "a", "From: dave@example.com\nSubject: Short");
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "dave@example.com");
     assert_eq!(m.subject, "Short");
 }
@@ -195,7 +195,7 @@ fn crlf_line_endings() {
         "From: Eve Example <eve@example.com>\r\nSubject: Windows\r\n\
          Date: Tue, 14 Nov 2023 22:13:20 +0000\r\n\r\nSubject: not this\r\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "Eve Example");
     assert_eq!(m.subject, "Windows");
     assert_eq!(unix(&m), Some(PLAIN_DATE));
@@ -205,7 +205,7 @@ fn crlf_line_endings() {
 fn a_folded_subject_is_joined() {
     let maildir = TestMaildir::new("folded");
     maildir.add("cur", "a", "Subject: one\n two\n\n");
-    assert_eq!(only(maildir.list()).subject, "one two");
+    assert_eq!(the_one_message(maildir.list()).subject, "one two");
 }
 
 #[test]
@@ -217,7 +217,7 @@ fn a_folded_from_and_a_folded_date_are_joined() {
         "From: Heidi Example\n <heidi@example.com>\n\
          Date: Tue, 14 Nov 2023\n\t22:13:20 +0000\n\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "Heidi Example");
     assert_eq!(unix(&m), Some(PLAIN_DATE));
 }
@@ -232,7 +232,7 @@ fn header_names_match_in_any_case() {
          subject: Shouting\n\
          dAtE: Tue, 14 Nov 2023 22:13:20 +0000\n\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "Ivan Example");
     assert_eq!(m.subject, "Shouting");
     assert_eq!(unix(&m), Some(PLAIN_DATE));
@@ -250,7 +250,7 @@ fn the_last_of_a_repeated_header_wins() {
         "Subject: first\nSubject: second\n\
          From: Judy Example <judy@example.com>\nFrom: Karl Example <karl@example.org>\n\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.subject, "second");
     assert_eq!(m.from, "Karl Example");
 }
@@ -267,7 +267,7 @@ fn header_lookalikes_in_the_body_are_not_headers() {
          From: Mallory <mallory@example.org>\n\
          Date: Tue, 14 Nov 2023 22:13:20 +0000\n",
     );
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.from, "Frank Example");
     assert_eq!(m.subject, "");
     assert_eq!(m.date, None);
@@ -282,7 +282,7 @@ fn headers_are_read_for_one_mebibyte_and_no_further() {
     }
     contents.push_str("From: Late Example <late@example.com>\n\n");
     maildir.add("cur", "a", contents);
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.subject, "Early");
     assert_eq!(m.from, "");
 }
@@ -314,7 +314,7 @@ fn entries_that_are_not_files_are_skipped() {
     let listed = receiver
         .recv_timeout(Duration::from_secs(10))
         .expect("the listing hung");
-    assert_eq!(only(listed.unwrap()).id.as_str(), "real");
+    assert_eq!(the_one_message(listed.unwrap()).id.as_str(), "real");
 }
 
 #[cfg(unix)]
@@ -329,7 +329,7 @@ fn a_link_to_a_message_is_listed() {
         maildir.root.join("cur").join("linked"),
     )
     .unwrap();
-    let m = only(maildir.list());
+    let m = the_one_message(maildir.list());
     assert_eq!(m.id.as_str(), "linked");
     assert_eq!(m.subject, "Hello there");
 }
@@ -342,14 +342,14 @@ fn a_time_that_cannot_exist_is_no_date() {
         "a",
         "Subject: a\nDate: Tue, 14 Nov 2023 25:13:20 +0000\n\n",
     );
-    assert_eq!(only(maildir.list()).date, None);
+    assert_eq!(the_one_message(maildir.list()).date, None);
 }
 
 #[test]
 fn a_blank_name_falls_back_to_the_address() {
     let maildir = TestMaildir::new("blank-name");
     maildir.add("cur", "a", "From: \"  \" <nina@example.org>\n\n");
-    assert_eq!(only(maildir.list()).from, "nina@example.org");
+    assert_eq!(the_one_message(maildir.list()).from, "nina@example.org");
 }
 
 #[test]
