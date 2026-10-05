@@ -151,13 +151,26 @@ fn messages_in_new_and_cur_are_both_listed() {
     assert_eq!(subjects, ["new", "old"]);
 }
 
+/// The reader lists `new` and `cur` and no other folder. `tmp` holds messages
+/// that are still being delivered; anything else beside them is not mail.
 #[test]
-fn tmp_dot_files_and_subfolders_are_ignored() {
-    let maildir = TestMaildir::new("ignored");
+fn nothing_outside_new_and_cur_is_read() {
+    let maildir = TestMaildir::new("outside");
     maildir.add("tmp", "half-delivered", PLAIN);
+    fs::create_dir(maildir.root.join("stray")).unwrap();
+    maildir.add("stray", "elsewhere", PLAIN);
+    fs::write(maildir.root.join("beside-the-folders"), PLAIN).unwrap();
+    maildir.add("cur", "real", PLAIN);
+    assert_eq!(the_one_message(maildir.list()).id.as_str(), "real");
+}
+
+#[test]
+fn dot_files_and_subfolders_inside_new_and_cur_are_skipped() {
+    let maildir = TestMaildir::new("skipped");
     maildir.add("cur", ".hidden", PLAIN);
     maildir.add("new", ".another", PLAIN);
     fs::create_dir(maildir.root.join("cur").join("subfolder")).unwrap();
+    maildir.add("cur/subfolder", "nested", PLAIN);
     maildir.add("cur", "real", PLAIN);
     assert_eq!(the_one_message(maildir.list()).id.as_str(), "real");
 }
