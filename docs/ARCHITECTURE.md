@@ -83,7 +83,7 @@ Which of the checks in the table below exist today:
 - **Formatting, lints and tests:** run in CI on every pull request, and block a merge. `main` requires them to pass.
 - **The vulnerability check:** runs on every pull request, on every push to `main` and once a day. It reports and doesn't block. A known vulnerability fails it. A dependency that is unmaintained, withdrawn or marked "unsound" gets a warning and passes.
 - **The core tripwire and the `unsafe` ban:** in place.
-- **The benchmark:** runs on every pull request and never blocks. It prints start-up and the time to list a Maildir of 10,000 messages on the workflow run's summary page, and marks a number that is over its target. It doesn't yet say whether a number got worse. The redraw number arrives with the code it measures.
+- **The benchmark:** runs on every pull request and never blocks. It prints three numbers on the workflow run's summary page, and marks one that is over its target: process start (`tuit --version`, not yet "first screen", which needs a terminal), the time to list a Maildir of 10,000 messages, and a key press redrawn with 10,000 loaded, drawn into an in-memory terminal so it leaves out writing to a real one. It doesn't yet say whether a number got worse.
 - **The two pull request sections:** in the template in `.github/`, required by a house rule, and held by review.
 
 The vulnerability check and the benchmark come before the first feature, so the first real code is measured from the start.
