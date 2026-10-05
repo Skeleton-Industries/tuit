@@ -9,4 +9,5 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+mail-parser = "0.11.9"
 tuit-core = { workspace = true }
