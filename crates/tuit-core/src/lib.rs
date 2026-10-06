@@ -7,6 +7,8 @@
 
 mod message;
 mod store;
+mod untrusted;
 
 pub use message::{MessageId, MessageSummary, Timestamp};
 pub use store::{MailStore, StoreError, list_newest_first};
+pub use untrusted::Untrusted;
