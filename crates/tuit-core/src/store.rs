@@ -3,6 +3,7 @@
 use std::fmt;
 
 use crate::message::MessageSummary;
+use crate::untrusted::Untrusted;
 
 /// Somewhere messages are kept.
 pub trait MailStore {
@@ -15,24 +16,25 @@ pub trait MailStore {
     fn list(&self) -> Result<Vec<MessageSummary>, StoreError>;
 }
 
-/// A store couldn't do what was asked.
+/// A store couldn't do what was asked. The message can carry file names, so it is shown only
+/// once made safe.
 #[derive(Debug)]
 pub struct StoreError {
-    message: String,
+    message: Untrusted,
 }
 
 impl StoreError {
     /// Makes an error with a message for a person to read.
     pub fn new(message: impl Into<String>) -> Self {
         Self {
-            message: message.into(),
+            message: Untrusted::new(message),
         }
     }
 }
 
 impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.message)
+        f.write_str(&self.message.terminal_line())
     }
 }
 
@@ -133,6 +135,12 @@ mod tests {
     fn an_empty_store_is_an_empty_list() {
         let sorted = list_newest_first(&Fake(Ok(Vec::new()))).unwrap();
         assert!(sorted.is_empty());
+    }
+
+    #[test]
+    fn a_store_error_is_safe_to_print() {
+        let error = StoreError::new("can't read a\nb\x1b[2J/new");
+        assert_eq!(error.to_string(), "can't read a b\u{fffd}[2J/new");
     }
 
     #[test]

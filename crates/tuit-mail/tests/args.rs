@@ -142,5 +142,5 @@ fn a_path_with_a_newline_in_it_is_still_a_one_line_error() {
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
-    assert!(stderr.contains("no-such?folder"), "{stderr}");
+    assert!(stderr.contains("no-such folder"), "{stderr}");
 }
