@@ -20,3 +20,6 @@ harness = false
 tuit-core = { workspace = true }
 tuit-maildir = { workspace = true }
 tuit-tui = { workspace = true }
+
+[dev-dependencies]
+ratatui = { workspace = true }
