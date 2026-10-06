@@ -5,7 +5,7 @@ use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::style::Modifier;
-use tuit_core::{MessageId, MessageSummary, Timestamp};
+use tuit_core::{MessageId, MessageSummary, Timestamp, Untrusted};
 use tuit_tui::{MessageList, Update};
 
 /// 2026-10-02 00:00:00 UTC
@@ -14,8 +14,8 @@ const OCT_2_2026: i64 = 1_790_899_200;
 fn message(n: usize, from: &str, subject: &str, date: Option<i64>) -> MessageSummary {
     MessageSummary {
         id: MessageId::new(format!("m{n}")),
-        from: from.to_string(),
-        subject: subject.to_string(),
+        from: Untrusted::new(from),
+        subject: Untrusted::new(subject),
         date: date.map(Timestamp::from_unix_seconds),
     }
 }
@@ -390,7 +390,10 @@ fn mail_text_cannot_send_control_characters_to_the_terminal() {
             }
         }
         let row = &lines(&terminal)[1];
-        assert!(row.contains("Hello [31m red newline tab"), "{row}");
+        assert!(
+            row.contains("Hello\u{fffd}[31m red newline tab \u{fffd}\u{fffd}  end"),
+            "{row}"
+        );
     }
 }
 
@@ -521,13 +524,23 @@ fn the_narrowest_screen_still_says_how_to_quit() {
 
 #[test]
 fn text_that_would_show_nothing_gets_the_placeholder() {
-    // Spaces, control characters, and characters that take no cells.
-    for blank in ["   ", "\x1b\x07", "\u{7f}", "\u{200b}\u{200b}", "\u{202e}"] {
+    // Spaces, a tab and a line break (which show as spaces), a character that takes no cells,
+    // and one the core's rule removes.
+    for blank in ["   ", "\t\r\n", "\u{200b}\u{200b}", "\u{202e}"] {
         let mut list = MessageList::new(vec![message(1, blank, blank, None)]);
         let rows = lines(&draw(&mut list, 80, 8));
         assert!(rows[1].contains("(no sender)"), "{blank:?}: {}", rows[1]);
         assert!(rows[1].contains("(no subject)"), "{blank:?}: {}", rows[1]);
     }
+}
+
+#[test]
+fn text_of_only_control_characters_shows_replacement_characters() {
+    let mut list = MessageList::new(vec![message(1, "\x1b\x07", "\u{7f}", None)]);
+    let rows = lines(&draw(&mut list, 80, 8));
+    assert!(rows[1].contains("\u{fffd}\u{fffd}"), "{}", rows[1]);
+    assert!(!rows[1].contains("(no sender)"), "{}", rows[1]);
+    assert!(!rows[1].contains("(no subject)"), "{}", rows[1]);
 }
 
 #[test]

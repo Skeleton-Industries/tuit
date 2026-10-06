@@ -1,6 +1,8 @@
 //! What a message is: its name in a store, a moment in time, and what a message
 //! list shows.
 
+use crate::untrusted::Untrusted;
+
 /// A store's own name for one message. Only the store that issued it can interpret it.
 ///
 /// It can come from a file name, so it can contain anything. It is a key, not something to
@@ -61,16 +63,16 @@ impl Timestamp {
 /// What a message list shows for one message.
 ///
 /// `from` and `subject` are whatever the message said. They can contain
-/// anything, including the control characters that drive a terminal. Whatever
-/// shows them has to make them safe first.
+/// anything, including the control characters that drive a terminal, so they
+/// are [`Untrusted`]: they can only be shown once made safe.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageSummary {
     /// The store's name for the message.
     pub id: MessageId,
     /// The sender's name if the message gives one, otherwise their address. Empty if neither.
-    pub from: String,
+    pub from: Untrusted,
     /// Empty if the message has no subject.
-    pub subject: String,
+    pub subject: Untrusted,
     /// `None` if the message has no date or the date can't be read.
     pub date: Option<Timestamp>,
 }

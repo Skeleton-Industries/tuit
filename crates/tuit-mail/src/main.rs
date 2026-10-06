@@ -228,8 +228,8 @@ mod tests {
         }
         let loaded = load(Source::Maildir(root.clone()));
         std::fs::remove_dir_all(&root).unwrap();
-        let subjects: Vec<String> = loaded.unwrap().into_iter().map(|m| m.subject).collect();
-        assert_eq!(subjects, ["Newest", "Older", "Oldest"]);
+        let subjects: Vec<Untrusted> = loaded.unwrap().into_iter().map(|m| m.subject).collect();
+        assert_eq!(subjects, ["Newest", "Older", "Oldest"].map(Untrusted::new));
     }
 
     #[test]

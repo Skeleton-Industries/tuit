@@ -76,8 +76,8 @@ mod tests {
     fn msg(id: &str, date: Option<i64>) -> MessageSummary {
         MessageSummary {
             id: MessageId::new(id),
-            from: String::new(),
-            subject: String::new(),
+            from: Untrusted::default(),
+            subject: Untrusted::default(),
             date: date.map(Timestamp::from_unix_seconds),
         }
     }

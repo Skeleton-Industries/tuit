@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use tuit_core::{MailStore, MessageId, MessageSummary, list_newest_first};
+use tuit_core::{MailStore, MessageId, MessageSummary, Untrusted, list_newest_first};
 use tuit_maildir::Maildir;
 
 /// A Maildir under Cargo's test directory, removed when dropped.
@@ -161,8 +161,11 @@ fn an_address_with_no_name() {
     maildir.add("cur", "a", "From: bob@example.org\nSubject: Hi\n\n");
     maildir.add("cur", "b", "From: <carol@example.org>\nSubject: Hi\n\n");
     let messages = maildir.list();
-    let froms: Vec<_> = messages.iter().map(|m| m.from.as_str()).collect();
-    assert_eq!(froms, ["bob@example.org", "carol@example.org"]);
+    let froms: Vec<_> = messages.iter().map(|m| m.from.clone()).collect();
+    assert_eq!(
+        froms,
+        ["bob@example.org", "carol@example.org"].map(Untrusted::new)
+    );
 }
 
 #[test]
@@ -209,8 +212,8 @@ fn messages_in_new_and_cur_are_both_listed() {
         "Subject: old\nDate: Mon, 13 Nov 2023 22:13:20 +0000\n\n",
     );
     let messages = maildir.list();
-    let subjects: Vec<_> = messages.iter().map(|m| m.subject.as_str()).collect();
-    assert_eq!(subjects, ["new", "old"]);
+    let subjects: Vec<_> = messages.iter().map(|m| m.subject.clone()).collect();
+    assert_eq!(subjects, ["new", "old"].map(Untrusted::new));
 }
 
 /// The reader lists `new` and `cur` and no other folder. `tmp` holds messages

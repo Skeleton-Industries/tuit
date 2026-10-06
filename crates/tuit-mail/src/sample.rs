@@ -4,7 +4,7 @@
 //! date, and dates spread over more than a year. Newest first with the undated one last, as the
 //! core lists them.
 
-use tuit_core::{MessageId, MessageSummary, Timestamp};
+use tuit_core::{MessageId, MessageSummary, Timestamp, Untrusted};
 
 /// Seconds since the epoch at 09:30 UTC on a calendar date.
 fn at(year: i64, month: i64, day: i64) -> i64 {
@@ -124,8 +124,8 @@ pub fn messages() -> Vec<MessageSummary> {
         .enumerate()
         .map(|(n, (from, subject, date))| MessageSummary {
             id: MessageId::new(format!("sample-{n}")),
-            from: from.to_string(),
-            subject: subject.to_string(),
+            from: Untrusted::new(from),
+            subject: Untrusted::new(subject),
             date: date.map(|(y, m, d)| Timestamp::from_unix_seconds(at(y, m, d))),
         })
         .collect()
@@ -153,9 +153,16 @@ mod tests {
         assert!(all.iter().any(|m| m.from.is_empty()));
         assert!(all.iter().any(|m| m.subject.is_empty()));
         assert!(all.iter().any(|m| m.date.is_none()));
-        assert!(all.iter().any(|m| m.from.chars().count() > 60));
-        assert!(all.iter().any(|m| m.subject.chars().count() > 100));
-        let text = |m: &MessageSummary| format!("{}{}", m.from, m.subject);
+        assert!(
+            all.iter()
+                .any(|m| m.from.terminal_line().chars().count() > 60)
+        );
+        assert!(
+            all.iter()
+                .any(|m| m.subject.terminal_line().chars().count() > 100)
+        );
+        let text =
+            |m: &MessageSummary| format!("{}{}", m.from.terminal_line(), m.subject.terminal_line());
         assert!(all.iter().any(|m| text(m).contains('田')), "wide");
         assert!(all.iter().any(|m| text(m).contains('\u{93f}')), "combining");
         assert!(
