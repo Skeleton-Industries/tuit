@@ -2,18 +2,18 @@
 //! list shows.
 
 /// A store's own name for one message. Only the store that issued it can interpret it.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+///
+/// It can come from a file name, so it can contain anything. It is a key, not something to
+/// show: it can be compared, ordered and hashed, and has no `Display` and no method that reads it
+/// as text. `Debug` shows it with control characters escaped. A store that has to find a message
+/// again will need to read it; that method is added here then, on purpose.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MessageId(String);
 
 impl MessageId {
     /// Wraps a store's name for a message.
     pub fn new(id: impl Into<String>) -> Self {
         Self(id.into())
-    }
-
-    /// The name as the store gave it.
-    pub fn as_str(&self) -> &str {
-        &self.0
     }
 }
 
@@ -84,8 +84,16 @@ mod tests {
     }
 
     #[test]
-    fn id_round_trips() {
-        assert_eq!(MessageId::new("abc:2,S").as_str(), "abc:2,S");
+    fn ids_compare_and_order_by_their_text() {
+        assert_eq!(MessageId::new("abc:2,S"), MessageId::new("abc:2,S"));
+        assert_ne!(MessageId::new("abc:2,S"), MessageId::new("abc"));
+        assert!(MessageId::new("a") < MessageId::new("b"));
+    }
+
+    #[test]
+    fn an_id_printed_for_debugging_has_its_control_characters_escaped() {
+        let shown = format!("{:?}", MessageId::new("a\x1b[2Jb"));
+        assert!(!shown.contains('\x1b'), "{shown}");
     }
 
     #[test]

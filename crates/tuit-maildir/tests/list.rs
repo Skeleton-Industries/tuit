@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use tuit_core::{MailStore, MessageSummary, list_newest_first};
+use tuit_core::{MailStore, MessageId, MessageSummary, list_newest_first};
 use tuit_maildir::Maildir;
 
 /// A Maildir under Cargo's test directory, removed when dropped.
@@ -61,7 +61,7 @@ fn a_plain_message() {
     let maildir = TestMaildir::new("plain");
     maildir.add("cur", "1.M1P1.host", PLAIN);
     let m = the_one_message(maildir.list());
-    assert_eq!(m.id.as_str(), "1.M1P1.host");
+    assert_eq!(m.id, MessageId::new("1.M1P1.host"));
     assert_eq!(m.from, "Alice Example");
     assert_eq!(m.subject, "Hello there");
     assert_eq!(unix(&m), Some(PLAIN_DATE));
@@ -189,8 +189,8 @@ fn no_date_and_a_garbage_date() {
         "Subject: c\nDate: Tue, 14 Nov 2023 22:13:20 +0000\n\n",
     );
     let messages = maildir.list();
-    let ids: Vec<_> = messages.iter().map(|m| m.id.as_str()).collect();
-    assert_eq!(ids, ["dated", "garbage", "none"]);
+    let ids: Vec<_> = messages.iter().map(|m| m.id.clone()).collect();
+    assert_eq!(ids, ["dated", "garbage", "none"].map(MessageId::new));
     assert_eq!(unix(&messages[1]), None);
     assert_eq!(unix(&messages[2]), None);
 }
@@ -223,7 +223,7 @@ fn nothing_outside_new_and_cur_is_read() {
     maildir.add("stray", "elsewhere", PLAIN);
     fs::write(maildir.root.join("beside-the-folders"), PLAIN).unwrap();
     maildir.add("cur", "real", PLAIN);
-    assert_eq!(the_one_message(maildir.list()).id.as_str(), "real");
+    assert_eq!(the_one_message(maildir.list()).id, MessageId::new("real"));
 }
 
 #[test]
@@ -234,7 +234,7 @@ fn dot_files_and_subfolders_inside_new_and_cur_are_skipped() {
     fs::create_dir(maildir.root.join("cur").join("subfolder")).unwrap();
     maildir.add("cur/subfolder", "nested", PLAIN);
     maildir.add("cur", "real", PLAIN);
-    assert_eq!(the_one_message(maildir.list()).id.as_str(), "real");
+    assert_eq!(the_one_message(maildir.list()).id, MessageId::new("real"));
 }
 
 #[test]
@@ -243,13 +243,12 @@ fn the_id_is_cut_at_the_first_colon() {
     maildir.add("cur", "1700000000.M1P1.host:2,S", PLAIN);
     maildir.add("new", "1700000001.M2P1.host", PLAIN);
     maildir.add("cur", "odd:name:2,S", PLAIN);
-    let mut ids: Vec<_> = maildir
-        .list()
-        .iter()
-        .map(|m| m.id.as_str().to_owned())
-        .collect();
+    let mut ids: Vec<_> = maildir.list().iter().map(|m| m.id.clone()).collect();
     ids.sort();
-    assert_eq!(ids, ["1700000000.M1P1.host", "1700000001.M2P1.host", "odd"]);
+    assert_eq!(
+        ids,
+        ["1700000000.M1P1.host", "1700000001.M2P1.host", "odd"].map(MessageId::new)
+    );
 }
 
 #[test]
@@ -389,7 +388,7 @@ fn entries_that_are_not_files_are_skipped() {
     let listed = receiver
         .recv_timeout(Duration::from_secs(10))
         .expect("the listing hung");
-    assert_eq!(the_one_message(listed.unwrap()).id.as_str(), "real");
+    assert_eq!(the_one_message(listed.unwrap()).id, MessageId::new("real"));
 }
 
 #[cfg(unix)]
@@ -405,7 +404,7 @@ fn a_link_to_a_message_is_listed() {
     )
     .unwrap();
     let m = the_one_message(maildir.list());
-    assert_eq!(m.id.as_str(), "linked");
+    assert_eq!(m.id, MessageId::new("linked"));
     assert_eq!(m.subject, "Hello there");
 }
 

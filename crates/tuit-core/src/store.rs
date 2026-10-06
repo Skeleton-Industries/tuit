@@ -51,11 +51,7 @@ pub fn list_newest_first(
     let mut messages = store.list()?;
     // `None` sorts before any `Some`, so comparing `b` to `a` puts the newest
     // first and the undated last.
-    messages.sort_by(|a, b| {
-        b.date
-            .cmp(&a.date)
-            .then_with(|| a.id.as_str().cmp(b.id.as_str()))
-    });
+    messages.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| a.id.cmp(&b.id)));
     Ok(messages)
 }
 
@@ -84,8 +80,12 @@ mod tests {
         }
     }
 
-    fn ids(messages: &[MessageSummary]) -> Vec<&str> {
-        messages.iter().map(|m| m.id.as_str()).collect()
+    fn ids(messages: &[MessageSummary]) -> Vec<MessageId> {
+        messages.iter().map(|m| m.id.clone()).collect()
+    }
+
+    fn named<const N: usize>(names: [&str; N]) -> Vec<MessageId> {
+        names.into_iter().map(MessageId::new).collect()
     }
 
     #[test]
@@ -96,7 +96,7 @@ mod tests {
             msg("c", Some(200)),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["b", "c", "a"]);
+        assert_eq!(ids(&sorted), named(["b", "c", "a"]));
     }
 
     #[test]
@@ -107,7 +107,7 @@ mod tests {
             msg("c", Some(10)),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["c", "b", "a"]);
+        assert_eq!(ids(&sorted), named(["c", "b", "a"]));
     }
 
     #[test]
@@ -119,14 +119,14 @@ mod tests {
             msg("b", None),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["a", "z", "b", "m"]);
+        assert_eq!(ids(&sorted), named(["a", "z", "b", "m"]));
     }
 
     #[test]
     fn a_store_behind_a_trait_object_can_be_listed() {
         let store: Box<dyn MailStore> = Box::new(Fake(Ok(vec![msg("a", Some(1))])));
         let sorted = list_newest_first(store.as_ref()).unwrap();
-        assert_eq!(ids(&sorted), ["a"]);
+        assert_eq!(ids(&sorted), named(["a"]));
     }
 
     #[test]
