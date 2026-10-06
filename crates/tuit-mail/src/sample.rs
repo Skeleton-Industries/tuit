@@ -1,4 +1,4 @@
-//! Made-up messages for the first screen, until the app reads a real Maildir. Everything here is
+//! Made-up messages, which `tuit --sample` shows in place of a real Maildir. Everything here is
 //! invented, and the dates are fixed so the screen looks the same on any day. The set is a test
 //! card for the look: long and empty fields, wide and combining characters, an emoji, a missing
 //! date, and dates spread over more than a year. Newest first with the undated one last, as the

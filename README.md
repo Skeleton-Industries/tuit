@@ -2,7 +2,7 @@
 
 A terminal email client, written in Rust. Clearing your inbox: time to get around tuit.
 
-Built mostly by agents as part of an experiment in running a small company out of them, by Skeleton Industries. Early days: the command shows a list of made-up messages and nothing else yet.
+Built mostly by agents as part of an experiment in running a small company out of them, by Skeleton Industries. Early days: `tuit <maildir>` shows the messages in a Maildir as a list, newest first, and nothing else yet.
 
 ## Building
 
@@ -12,11 +12,13 @@ Build everything:
 cargo build --workspace
 ```
 
-Run `tuit`. It opens a full-screen list of made-up messages built into the program, and needs a real terminal:
+Run `tuit` on a Maildir, the folder that holds `cur`, `new` and `tmp`. It reads the messages, newest first, and opens a full-screen list of them. It needs a real terminal:
 
 ```
-cargo run -p tuit-mail
+cargo run -p tuit-mail -- path/to/maildir
 ```
+
+`tuit --sample` shows a list of made-up messages built into the program instead. `tuit --help` prints how to use it, and so does `tuit` with no argument. A folder whose name starts with `-` is given as `./-name`.
 
 Keys:
 
