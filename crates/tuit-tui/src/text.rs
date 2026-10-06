@@ -1,6 +1,7 @@
 //! Making mail text safe and the right width for a terminal.
 
 use ratatui::buffer::CellWidth;
+use tuit_core::Untrusted;
 use unicode_segmentation::UnicodeSegmentation;
 
 const ELLIPSIS: &str = "…";
@@ -10,27 +11,29 @@ const ELLIPSIS: &str = "…";
 /// depend on how much text the mail carries.
 const LOOK_BYTES: usize = 4096;
 
-/// Replaces every control character (C0, DEL and C1: newline, tab, and the escape that starts a
-/// terminal sequence) with a space. The rest of a sequence is left behind as plain, harmless
-/// text.
-pub(crate) fn sanitize(text: &str) -> String {
-    text.chars()
-        .map(|c| if c.is_control() { ' ' } else { c })
-        .collect()
+/// Mail text made safe and cut to at most `width` terminal cells, with `…` where it was cut.
+///
+/// Made safe by the core's one rule for a terminal line; cut as [`fit`] cuts. Only the first
+/// `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
+pub(crate) fn sanitize_and_fit(text: &Untrusted, width: usize) -> String {
+    let (text, cut) = text.terminal_line_prefix(LOOK_BYTES);
+    fit_cut(&text, cut, width)
 }
 
-/// `text` made safe and cut to at most `width` terminal cells, with `…` where it was cut.
+/// tuit's own text cut to at most `width` terminal cells, with `…` where it was cut. Mail text
+/// goes through [`sanitize_and_fit`], which is the only way in for it.
 ///
 /// Cuts fall between grapheme clusters, so a letter keeps its combining marks and an emoji made
 /// of several characters stays whole. Widths are counted one cluster at a time with ratatui's own
 /// `cell_width`, so the cut agrees with what ratatui draws; a test holds that for a set of
-/// awkward text. A cluster that takes no cells by itself (a zero-width
-/// space, a text-direction override) is dropped. Only the first `LOOK_BYTES` of `text` are
-/// looked at; longer text counts as cut.
-pub(crate) fn sanitize_and_fit(text: &str, width: usize) -> String {
-    let end = text.floor_char_boundary(LOOK_BYTES);
-    let mut cut = end < text.len();
-    let text = sanitize(&text[..end]);
+/// awkward text. A cluster that takes no cells by itself (a zero-width space) is dropped.
+pub(crate) fn fit(text: &str, width: usize) -> String {
+    fit_cut(text, false, width)
+}
+
+/// `fit`, for text that may already have lost its end (`cut`), which gets the `…` even if what
+/// is left fits.
+fn fit_cut(text: &str, mut cut: bool, width: usize) -> String {
     let mut out = String::new();
     let mut used = 0;
     // How much of `out` to keep if the ellipsis has to go in after it.
@@ -85,6 +88,10 @@ pub(crate) fn format_date((year, month, day): (i64, u32, u32)) -> String {
 mod tests {
     use super::*;
 
+    fn sanitize_and_fit(text: &str, width: usize) -> String {
+        super::sanitize_and_fit(&Untrusted::new(text), width)
+    }
+
     #[test]
     fn short_text_is_untouched() {
         assert_eq!(sanitize_and_fit("hello", 5), "hello");
@@ -133,7 +140,8 @@ mod tests {
 
     #[test]
     fn clusters_that_take_no_cells_are_dropped() {
-        // A zero-width space, a right-to-left override and a byte-order mark.
+        // A zero-width space and a byte-order mark. The right-to-left override is already gone:
+        // the core's rule removes it.
         assert_eq!(sanitize_and_fit("a\u{200b}b\u{202e}c\u{feff}", 10), "abc");
         assert_eq!(sanitize_and_fit("\u{200b}\u{200b}", 10), "");
     }
@@ -190,8 +198,11 @@ mod tests {
     }
 
     #[test]
-    fn controls_become_spaces() {
-        assert_eq!(sanitize("a\x1b[2Jb\nc\td\u{9b}e"), "a [2Jb c d e");
+    fn mail_text_is_made_safe_before_it_is_fitted() {
+        assert_eq!(
+            sanitize_and_fit("a\x1b[2Jb\nc\td\u{9b}e", 20),
+            "a\u{fffd}[2Jb c d\u{fffd}e"
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@ use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 
 use mail_parser::MessageParser;
-use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp};
+use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp, Untrusted};
 
 /// How much of a file is read, at most, when looking for the end of its headers.
 /// A safety limit, set by judgement and not by measurement: real headers are
@@ -129,8 +129,8 @@ fn read_headers(path: &Path) -> io::Result<Option<Vec<u8>>> {
 fn summarise(id: MessageId, headers: &[u8]) -> MessageSummary {
     let mut summary = MessageSummary {
         id,
-        from: String::new(),
-        subject: String::new(),
+        from: Untrusted::default(),
+        subject: Untrusted::default(),
         date: None,
     };
     let Some(message) = MessageParser::default().parse_headers(headers) else {
@@ -139,9 +139,9 @@ fn summarise(id: MessageId, headers: &[u8]) -> MessageSummary {
     if let Some(sender) = message.from().and_then(|from| from.first()) {
         let name = sender.name().filter(|n| !n.trim().is_empty());
         let address = sender.address().filter(|a| !a.trim().is_empty());
-        summary.from = name.or(address).unwrap_or_default().to_owned();
+        summary.from = Untrusted::new(name.or(address).unwrap_or_default());
     }
-    summary.subject = message.subject().unwrap_or_default().to_owned();
+    summary.subject = Untrusted::new(message.subject().unwrap_or_default());
     summary.date = message
         .date()
         .filter(|date| date.is_valid())
