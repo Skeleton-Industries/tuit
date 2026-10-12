@@ -96,8 +96,8 @@ impl MessageList {
         }
     }
 
-    /// Applies one key press. `gg` goes to the top; a lone `g` only arms the next key. A movement key that leaves the selection where it was, such as
-    /// down on the last row, is `Ignored`.
+    /// Applies one key press. `gg` goes to the top; a lone `g` only arms the next key. A movement
+    /// key that leaves the selection where it was, such as down on the last row, is `Ignored`.
     pub fn handle_key(&mut self, key: KeyEvent) -> Update {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return Update::Quit;

@@ -568,6 +568,66 @@ fn gg_goes_to_the_top() {
 }
 
 #[test]
+fn gg_at_the_top_asks_for_no_redraw() {
+    let mut list = MessageList::new(numbered(5));
+    assert_eq!(list.handle_event(&key(KeyCode::Char('g'))), Update::Ignored);
+    assert_eq!(list.handle_event(&key(KeyCode::Char('g'))), Update::Ignored);
+    assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn the_release_between_two_presses_of_g_does_not_break_the_pair() {
+    // Terminals that report releases send press, release, press for `gg`.
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End]);
+    let mut release = KeyEvent::from(KeyCode::Char('g'));
+    release.kind = KeyEventKind::Release;
+    list.handle_event(&key(KeyCode::Char('g')));
+    list.handle_event(&Event::Key(release));
+    list.handle_event(&key(KeyCode::Char('g')));
+    assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn a_resize_between_two_presses_of_g_does_not_break_the_pair() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End, KeyCode::Char('g')]);
+    list.handle_event(&Event::Resize(80, 12));
+    press(&mut list, &[KeyCode::Char('g')]);
+    assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn any_key_between_two_presses_of_g_breaks_the_pair() {
+    // Each of these leaves the selection on the last row, so a jump would show.
+    let between = [
+        key(KeyCode::Char('j')),
+        key(KeyCode::Char('G')),
+        key(KeyCode::End),
+        key(KeyCode::PageDown),
+        key(KeyCode::Char('x')),
+        with_modifiers(KeyCode::Char('x'), KeyModifiers::CONTROL),
+        with_modifiers(KeyCode::Char('x'), KeyModifiers::ALT),
+        with_modifiers(KeyCode::Char('g'), KeyModifiers::CONTROL),
+        with_modifiers(KeyCode::Char('g'), KeyModifiers::ALT),
+    ];
+    for other in between {
+        let mut list = MessageList::new(numbered(5));
+        press(&mut list, &[KeyCode::End, KeyCode::Char('g')]);
+        list.handle_event(&other);
+        press(&mut list, &[KeyCode::Char('g')]);
+        assert_eq!(list.selected(), Some(4), "{other:?}");
+    }
+}
+
+#[test]
+fn g_then_q_quits() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::Char('g')]);
+    assert_eq!(list.handle_event(&key(KeyCode::Char('q'))), Update::Quit);
+}
+
+#[test]
 fn a_lone_g_does_not_move() {
     let mut list = MessageList::new(numbered(5));
     press(&mut list, &[KeyCode::End]);
@@ -585,20 +645,6 @@ fn g_then_another_key_does_that_keys_job() {
     assert_eq!(list.selected(), Some(4));
     press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('k')]);
     assert_eq!(list.selected(), Some(3));
-}
-
-#[test]
-fn g_other_g_does_not_jump() {
-    let mut list = MessageList::new(numbered(5));
-    press(&mut list, &[KeyCode::End]);
-    press(
-        &mut list,
-        &[KeyCode::Char('g'), KeyCode::Char('x'), KeyCode::Char('g')],
-    );
-    assert_eq!(list.selected(), Some(4));
-    // The second g armed again, so a third finishes the pair.
-    press(&mut list, &[KeyCode::Char('g')]);
-    assert_eq!(list.selected(), Some(0));
 }
 
 #[test]
