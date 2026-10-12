@@ -26,7 +26,7 @@ Keys:
 | --- | --- |
 | `j` or Down | Move down |
 | `k` or Up | Move up |
-| `g` or Home | Go to the top |
+| `gg` or Home | Go to the top |
 | `G` or End | Go to the bottom |
 | PageDown, PageUp | Move by a screenful |
 | `q` or Ctrl-C | Quit |
