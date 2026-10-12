@@ -1,0 +1,16 @@
+# For every crate that has no `clippy.toml` of its own: today, the three edge crates. Clippy uses
+# the nearest file, so `crates/tuit-core/clippy.toml` holds the core's list and this one doesn't
+# apply there.
+#
+# `Untrusted::expose_raw` hands over text from outside exactly as it came. Clippy refuses the call,
+# tests included, except on a line where `#[expect]` switches the lint off and gives a reason.
+# That belongs only in a function that makes the text safe for one destination. Today there is
+# one such line, in `terminal_line_prefix` in `crates/tuit-tui/src/safe.rs`.
+# See docs/ARCHITECTURE.md.
+#
+# A path Clippy can't find is only a warning here. What fails the lint check then is that
+# `#[expect]`, which finds nothing to switch off.
+
+disallowed-methods = [
+    { path = "tuit_core::Untrusted::expose_raw", reason = "text from outside is read raw only where it is made safe" },
+]

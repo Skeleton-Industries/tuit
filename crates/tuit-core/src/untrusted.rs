@@ -60,6 +60,15 @@ impl Untrusted {
         self.0.is_empty()
     }
 
+    /// The text exactly as it came, control characters included.
+    ///
+    /// It exists so that an edge can write the rule that makes the text safe for its own
+    /// destination. Nothing else should call it, and outside this crate a lint refuses the call
+    /// unless a function switches the lint off: see `docs/ARCHITECTURE.md`.
+    pub fn expose_raw(&self) -> &str {
+        &self.0
+    }
+
     /// All of the text, made safe to write to a terminal on one line.
     pub fn terminal_line(&self) -> String {
         make_safe(&self.0)
@@ -188,6 +197,12 @@ mod tests {
         assert!(!shown.contains('\x1b'));
         assert!(!shown.contains('\n'));
         assert!(shown.contains("\\u{1b}"));
+    }
+
+    #[test]
+    fn expose_raw_gives_the_text_as_it_came() {
+        let text = "a\x1b[2J\tb \u{202e}";
+        assert_eq!(Untrusted::new(text).expose_raw(), text);
     }
 
     #[test]
