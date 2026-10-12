@@ -33,7 +33,7 @@ const SUBJECT_MIN_WIDTH_NO_DATE: usize = 14;
 
 const NO_SUBJECT: &str = "(no subject)";
 const NO_SENDER: &str = "(no sender)";
-const HINT: &str = "q quit · j/k move · g/G top/bottom · PgUp/PgDn page";
+const HINT: &str = "q quit · j/k move · gg/G top/bottom · PgUp/PgDn page";
 
 /// What the screen should do after an event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,6 +55,9 @@ pub struct MessageList {
     offset: usize,
     /// How many rows the last draw had room for, used for paging. At least 1.
     page: usize,
+    /// A `g` was pressed and the next key hasn't been. A second `g` goes to the top; any other
+    /// key clears this and does its own job. There is no timeout.
+    g_pending: bool,
 }
 
 impl MessageList {
@@ -65,6 +68,7 @@ impl MessageList {
             selected: 0,
             offset: 0,
             page: 1,
+            g_pending: false,
         }
     }
 
@@ -92,12 +96,13 @@ impl MessageList {
         }
     }
 
-    /// Applies one key press. A movement key that leaves the selection where it was, such as
+    /// Applies one key press. `gg` goes to the top; a lone `g` only arms the next key. A movement key that leaves the selection where it was, such as
     /// down on the last row, is `Ignored`.
     pub fn handle_key(&mut self, key: KeyEvent) -> Update {
         if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
             return Update::Quit;
         }
+        let g_was_pending = std::mem::take(&mut self.g_pending);
         if key
             .modifiers
             .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT)
@@ -110,7 +115,9 @@ impl MessageList {
             KeyCode::Char('q') => return Update::Quit,
             KeyCode::Char('j') | KeyCode::Down => self.selected = (self.selected + 1).min(last),
             KeyCode::Char('k') | KeyCode::Up => self.selected = self.selected.saturating_sub(1),
-            KeyCode::Char('g') | KeyCode::Home => self.selected = 0,
+            KeyCode::Char('g') if g_was_pending => self.selected = 0,
+            KeyCode::Char('g') => self.g_pending = true,
+            KeyCode::Home => self.selected = 0,
             KeyCode::Char('G') | KeyCode::End => self.selected = last,
             KeyCode::PageDown => self.selected = (self.selected + self.page).min(last),
             KeyCode::PageUp => self.selected = self.selected.saturating_sub(self.page),

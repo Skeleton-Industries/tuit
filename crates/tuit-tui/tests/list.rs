@@ -165,7 +165,7 @@ fn selection_moves_and_stops_at_both_ends() {
         &[KeyCode::Down, KeyCode::Char('j'), KeyCode::PageDown],
     );
     assert_eq!(list.selected(), Some(2));
-    press(&mut list, &[KeyCode::Char('g')]);
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('g')]);
     assert_eq!(list.selected(), Some(0));
     press(&mut list, &[KeyCode::End]);
     assert_eq!(list.selected(), Some(2));
@@ -190,7 +190,7 @@ fn scrolling_keeps_the_selection_in_view() {
     }
     assert!(lines(&terminal)[row_of(&terminal, "Subject 21")].contains("Subject 21"));
     // Scrolling back up brings the first rows back.
-    press(&mut list, &[KeyCode::Char('g')]);
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('g')]);
     let rows = screen(&mut list, 80, 10);
     assert!(rows.contains("Subject 1 "));
 }
@@ -422,7 +422,6 @@ fn each_movement_key_stops_at_its_end() {
         KeyCode::Char('k'),
         KeyCode::PageUp,
         KeyCode::Home,
-        KeyCode::Char('g'),
     ];
     for code in upward {
         press(&mut list, &[KeyCode::End]);
@@ -510,7 +509,7 @@ fn the_hint_names_the_keys() {
     let rows = lines(&draw(&mut list, 80, 8));
     assert_eq!(
         rows[7],
-        " q quit · j/k move · g/G top/bottom · PgUp/PgDn page"
+        " q quit · j/k move · gg/G top/bottom · PgUp/PgDn page"
     );
 }
 
@@ -558,4 +557,53 @@ fn a_date_too_long_for_its_column_is_left_out() {
         rows[1]
     );
     assert!(rows[2].contains("31 Dec 9999"), "{}", rows[2]);
+}
+
+#[test]
+fn gg_goes_to_the_top() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End]);
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('g')]);
+    assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn a_lone_g_does_not_move() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End]);
+    let update = list.handle_event(&key(KeyCode::Char('g')));
+    assert_eq!(update, Update::Ignored);
+    assert_eq!(list.selected(), Some(4));
+}
+
+#[test]
+fn g_then_another_key_does_that_keys_job() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('j')]);
+    assert_eq!(list.selected(), Some(1));
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('G')]);
+    assert_eq!(list.selected(), Some(4));
+    press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('k')]);
+    assert_eq!(list.selected(), Some(3));
+}
+
+#[test]
+fn g_other_g_does_not_jump() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End]);
+    press(
+        &mut list,
+        &[KeyCode::Char('g'), KeyCode::Char('x'), KeyCode::Char('g')],
+    );
+    assert_eq!(list.selected(), Some(4));
+    // The second g armed again, so a third finishes the pair.
+    press(&mut list, &[KeyCode::Char('g')]);
+    assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn home_goes_to_the_top_on_one_press() {
+    let mut list = MessageList::new(numbered(5));
+    press(&mut list, &[KeyCode::End, KeyCode::Home]);
+    assert_eq!(list.selected(), Some(0));
 }

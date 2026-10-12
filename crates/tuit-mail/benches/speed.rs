@@ -161,7 +161,7 @@ fn list() -> Vec<Duration> {
 }
 
 /// Times handling one key press and drawing the result, with 10,000 made-up messages loaded.
-/// Each press is PageDown, so every row on the screen changes; every hundredth is `g`, back to
+/// Each press is PageDown, so every row on the screen changes; every hundredth is Home, back to
 /// the top.
 fn redraw() -> Vec<Duration> {
     let messages = (0..REDRAW_MESSAGES)
@@ -186,7 +186,7 @@ fn redraw() -> Vec<Duration> {
     let mut run = || {
         step += 1;
         let code = if step % 100 == 0 {
-            KeyCode::Char('g')
+            KeyCode::Home
         } else {
             KeyCode::PageDown
         };
