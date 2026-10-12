@@ -149,10 +149,11 @@ fn control_characters_in_an_argument_are_not_printed() {
 }
 
 #[test]
-fn a_path_with_a_newline_in_it_is_still_a_one_line_error() {
-    let output = tuit(&["no-such\nfolder"]);
+fn a_path_with_a_newline_and_an_escape_in_it_is_a_clean_one_line_error() {
+    let output = tuit(&["no-such\nfolder\x1b[31m"]);
     assert_eq!(output.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
-    assert!(stderr.contains("no-such folder"), "{stderr}");
+    assert!(!stderr.contains('\x1b'), "{stderr}");
+    assert!(stderr.contains("no-such folder\u{fffd}[31m"), "{stderr}");
 }
