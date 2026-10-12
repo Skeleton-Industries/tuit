@@ -1,13 +1,38 @@
 //! Text that came from outside, marked so that it can't be shown by accident.
 
+/// A rule that makes text from outside safe for one destination.
+///
+/// The core defines no rules and doesn't know the destinations. An edge that knows a
+/// destination writes a named type for it and implements this trait for that type. An
+/// [`Untrusted`] applies the rule itself, through [`Untrusted::sanitize_with`].
+///
+/// An implementation receives the raw text, so it is the place a reviewer looks. One that hands
+/// the text back unchanged, or keeps it, defeats the type, on purpose or by mistake, and only
+/// review catches it. So does one that wraps a closure and calls it: the rule is then wherever
+/// the closure is written, and no longer has one place.
+///
+/// A closure by itself is not a rule, because nothing implements this trait for closures:
+///
+/// ```compile_fail
+/// use tuit_core::Untrusted;
+/// let _ = Untrusted::new("x").sanitize_with(&|raw: &str| raw.to_owned());
+/// ```
+pub trait Sanitizer {
+    /// What this destination calls safe.
+    type Output;
+
+    /// Applies the rule to the text exactly as it came.
+    fn sanitize(&self, raw: &str) -> Self::Output;
+}
+
 /// Text from outside tuit: a sender, a subject, a file name, a path. It can contain anything,
 /// control characters included, and hasn't been made safe for anywhere.
 ///
 /// The core only marks text. What "safe" means depends on where the text is going, and the edge
-/// that sends it there decides that and writes the rule. So the type has no `Display` and no
-/// `Deref` or `AsRef<str>`: showing it by accident doesn't compile. The way to the text is
-/// [`expose_raw`](Self::expose_raw), which has to be called on purpose and is meant for that
-/// edge's rule.
+/// that sends it there decides that and writes the rule, as a [`Sanitizer`]. So the type has no
+/// `Display` and no `Deref` or `AsRef<str>`: showing it by accident doesn't compile. The way to
+/// the text is [`sanitize_with`](Self::sanitize_with), which hands the raw text to a rule and
+/// returns what the rule makes of it. No method hands the raw text to a caller.
 ///
 /// Two things still see the text. `Debug` is kept for test failures and escapes control
 /// characters by its own rule, which is not a rule for showing text to a person. And comparing
@@ -51,13 +76,10 @@ impl Untrusted {
         self.0.is_empty()
     }
 
-    /// The text exactly as it came, control characters included.
-    ///
-    /// It exists so that an edge can write the rule that makes the text safe for its own
-    /// destination. Nothing else should call it, and outside this crate a lint refuses the call
-    /// unless a function switches the lint off: see `docs/ARCHITECTURE.md`.
-    pub fn expose_raw(&self) -> &str {
-        &self.0
+    /// Makes the text safe with `sanitizer`, which is given it exactly as it came, and returns
+    /// what the rule makes of it.
+    pub fn sanitize_with<S: Sanitizer>(&self, sanitizer: &S) -> S::Output {
+        sanitizer.sanitize(&self.0)
     }
 }
 
@@ -77,6 +99,36 @@ impl PartialEq<&str> for Untrusted {
 mod tests {
     use super::*;
 
+    struct Length;
+
+    impl Sanitizer for Length {
+        type Output = usize;
+
+        fn sanitize(&self, raw: &str) -> usize {
+            raw.len()
+        }
+    }
+
+    struct Upper;
+
+    impl Sanitizer for Upper {
+        type Output = String;
+
+        fn sanitize(&self, raw: &str) -> String {
+            raw.to_uppercase()
+        }
+    }
+
+    struct Same;
+
+    impl Sanitizer for Same {
+        type Output = String;
+
+        fn sanitize(&self, raw: &str) -> String {
+            raw.to_owned()
+        }
+    }
+
     #[test]
     fn debug_escapes_control_characters() {
         let shown = format!("{:?}", Untrusted::new("a\x1b[2Jb\nc"));
@@ -86,9 +138,17 @@ mod tests {
     }
 
     #[test]
-    fn expose_raw_gives_the_text_as_it_came() {
-        let text = "a\x1b[2J\tb \u{202e}";
-        assert_eq!(Untrusted::new(text).expose_raw(), text);
+    fn a_rule_sees_the_text_as_it_came() {
+        // Control characters, a direction character and spaces at the ends all arrive.
+        let text = " a\x1b[2J\tb \u{202e}\n";
+        assert_eq!(Untrusted::new(text).sanitize_with(&Same), text);
+        assert_eq!(Untrusted::new(text).sanitize_with(&Length), text.len());
+    }
+
+    #[test]
+    fn the_output_of_the_rule_is_returned() {
+        assert_eq!(Untrusted::new("abc").sanitize_with(&Upper), "ABC");
+        assert_eq!(Untrusted::default().sanitize_with(&Length), 0);
     }
 
     #[test]

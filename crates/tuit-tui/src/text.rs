@@ -4,7 +4,7 @@ use ratatui::buffer::CellWidth;
 use tuit_core::Untrusted;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::safe::terminal_line_prefix;
+use crate::safe::TerminalLinePrefix;
 
 const ELLIPSIS: &str = "…";
 
@@ -15,10 +15,12 @@ const LOOK_BYTES: usize = 4096;
 
 /// Mail text made safe and cut to at most `width` terminal cells, with `…` where it was cut.
 ///
-/// Made safe by the rule for a terminal line, [`crate::terminal_line`]; cut as [`fit`] cuts. Only
-/// the first `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
+/// Made safe by the same rule as [`crate::TerminalLine`], applied to a prefix; cut as [`fit`]
+/// cuts. Only the first `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
 pub(crate) fn sanitize_and_fit(text: &Untrusted, width: usize) -> String {
-    let (text, cut) = terminal_line_prefix(text, LOOK_BYTES);
+    let (text, cut) = text.sanitize_with(&TerminalLinePrefix {
+        max_bytes: LOOK_BYTES,
+    });
     fit_cut(&text, cut, width)
 }
 

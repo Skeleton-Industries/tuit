@@ -153,19 +153,25 @@ mod tests {
         assert!(all.iter().any(|m| m.from.is_empty()));
         assert!(all.iter().any(|m| m.subject.is_empty()));
         assert!(all.iter().any(|m| m.date.is_none()));
-        assert!(
-            all.iter()
-                .any(|m| tuit_tui::terminal_line(&m.from).chars().count() > 60)
-        );
-        assert!(
-            all.iter()
-                .any(|m| tuit_tui::terminal_line(&m.subject).chars().count() > 100)
-        );
+        assert!(all.iter().any(|m| {
+            m.from
+                .sanitize_with(&tuit_tui::TerminalLine)
+                .chars()
+                .count()
+                > 60
+        }));
+        assert!(all.iter().any(|m| {
+            m.subject
+                .sanitize_with(&tuit_tui::TerminalLine)
+                .chars()
+                .count()
+                > 100
+        }));
         let text = |m: &MessageSummary| {
             format!(
                 "{}{}",
-                tuit_tui::terminal_line(&m.from),
-                tuit_tui::terminal_line(&m.subject)
+                m.from.sanitize_with(&tuit_tui::TerminalLine),
+                m.subject.sanitize_with(&tuit_tui::TerminalLine)
             )
         };
         assert!(all.iter().any(|m| text(m).contains('田')), "wide");

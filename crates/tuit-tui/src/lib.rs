@@ -6,9 +6,9 @@
 //! without a terminal: feed it events and draw it into any ratatui buffer, such as the
 //! in-memory `TestBackend`.
 //!
-//! [`terminal_line`] is the rule that makes text from outside safe for one line of a terminal.
-//! It lives here because this is the crate that knows what a terminal is; the command line uses
-//! it for its error lines.
+//! [`TerminalLine`] is the rule that makes text from outside safe for one line of a terminal:
+//! `text.sanitize_with(&TerminalLine)`. It lives here because this is the crate that knows what
+//! a terminal is; the command line uses it for its error lines.
 
 mod list;
 mod safe;
@@ -22,7 +22,7 @@ use ratatui::crossterm::event;
 use tuit_core::MessageSummary;
 
 pub use list::{MIN_HEIGHT, MIN_WIDTH, MessageList, Update};
-pub use safe::terminal_line;
+pub use safe::TerminalLine;
 
 /// Takes over the terminal, shows `messages` in a list, and returns when the user quits. The
 /// terminal is put back as it was, including if the program panics. It is not put back if the

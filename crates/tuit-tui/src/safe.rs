@@ -1,8 +1,8 @@
 //! The rule for text that is going to a line of a terminal.
 
-use tuit_core::Untrusted;
+use tuit_core::Sanitizer;
 
-/// All of `text`, made safe to write to a terminal on one line, by this rule:
+/// The rule that makes text from outside safe to write to a terminal on one line:
 ///
 /// 1. a tab and every character that breaks a line (U+0009 to U+000D, U+0085, U+2028 and
 ///    U+2029) becomes a space;
@@ -16,24 +16,34 @@ use tuit_core::Untrusted;
 /// Nothing else changes. That leaves in some characters that can't start a terminal sequence
 /// but aren't plain text either: zero-width characters and the direction marks (U+200E, U+200F,
 /// U+061C).
-pub fn terminal_line(text: &Untrusted) -> String {
-    terminal_line_prefix(text, usize::MAX).0
+///
+/// Use it as `text.sanitize_with(&TerminalLine)`. All of the text goes through the rule; none
+/// is cut off.
+#[derive(Debug, Clone, Copy)]
+pub struct TerminalLine;
+
+impl Sanitizer for TerminalLine {
+    type Output = String;
+
+    fn sanitize(&self, raw: &str) -> String {
+        clean(raw)
+    }
 }
 
-/// Like [`terminal_line`], for at most the first `max_bytes` bytes of the raw text, cut back to a
-/// character boundary. The `bool` says whether any text was left out. The text past the prefix
-/// is never looked at, so the cost doesn't depend on its length.
-///
-/// This is the only place outside the core that calls `expose_raw`. The lint is switched off for
-/// that one line; that the raw text doesn't leave this function is held by review.
-pub(crate) fn terminal_line_prefix(text: &Untrusted, max_bytes: usize) -> (String, bool) {
-    #[expect(
-        clippy::disallowed_methods,
-        reason = "the raw text is read here to be made safe for a terminal line"
-    )]
-    let raw = text.expose_raw();
-    let end = raw.floor_char_boundary(max_bytes);
-    (clean(&raw[..end]), end < raw.len())
+/// [`TerminalLine`] for at most the first `max_bytes` bytes of the raw text, cut back to a
+/// character boundary. The `bool` in the output says whether any text was left out. The text
+/// past the prefix is never looked at, so the cost doesn't depend on its length.
+pub(crate) struct TerminalLinePrefix {
+    pub(crate) max_bytes: usize,
+}
+
+impl Sanitizer for TerminalLinePrefix {
+    type Output = (String, bool);
+
+    fn sanitize(&self, raw: &str) -> (String, bool) {
+        let end = raw.floor_char_boundary(self.max_bytes);
+        (clean(&raw[..end]), end < raw.len())
+    }
 }
 
 fn clean(text: &str) -> String {
@@ -50,13 +60,14 @@ fn clean(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tuit_core::Untrusted;
 
     fn line(text: &str) -> String {
-        terminal_line(&Untrusted::new(text))
+        Untrusted::new(text).sanitize_with(&TerminalLine)
     }
 
     fn prefix(text: &str, max_bytes: usize) -> (String, bool) {
-        terminal_line_prefix(&Untrusted::new(text), max_bytes)
+        Untrusted::new(text).sanitize_with(&TerminalLinePrefix { max_bytes })
     }
 
     #[test]
