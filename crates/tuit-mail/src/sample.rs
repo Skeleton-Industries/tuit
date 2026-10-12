@@ -155,14 +155,19 @@ mod tests {
         assert!(all.iter().any(|m| m.date.is_none()));
         assert!(
             all.iter()
-                .any(|m| m.from.terminal_line().chars().count() > 60)
+                .any(|m| tuit_tui::terminal_line(&m.from).chars().count() > 60)
         );
         assert!(
             all.iter()
-                .any(|m| m.subject.terminal_line().chars().count() > 100)
+                .any(|m| tuit_tui::terminal_line(&m.subject).chars().count() > 100)
         );
-        let text =
-            |m: &MessageSummary| format!("{}{}", m.from.terminal_line(), m.subject.terminal_line());
+        let text = |m: &MessageSummary| {
+            format!(
+                "{}{}",
+                tuit_tui::terminal_line(&m.from),
+                tuit_tui::terminal_line(&m.subject)
+            )
+        };
         assert!(all.iter().any(|m| text(m).contains('田')), "wide");
         assert!(all.iter().any(|m| text(m).contains('\u{93f}')), "combining");
         assert!(

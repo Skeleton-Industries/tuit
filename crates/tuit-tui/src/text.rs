@@ -4,6 +4,8 @@ use ratatui::buffer::CellWidth;
 use tuit_core::Untrusted;
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::safe::terminal_line_prefix;
+
 const ELLIPSIS: &str = "…";
 
 /// How much of a piece of text `sanitize_and_fit` ever looks at, in bytes. A mail header can be
@@ -13,10 +15,10 @@ const LOOK_BYTES: usize = 4096;
 
 /// Mail text made safe and cut to at most `width` terminal cells, with `…` where it was cut.
 ///
-/// Made safe by the core's one rule for a terminal line; cut as [`fit`] cuts. Only the first
-/// `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
+/// Made safe by the rule for a terminal line, [`crate::terminal_line`]; cut as [`fit`] cuts. Only
+/// the first `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
 pub(crate) fn sanitize_and_fit(text: &Untrusted, width: usize) -> String {
-    let (text, cut) = text.terminal_line_prefix(LOOK_BYTES);
+    let (text, cut) = terminal_line_prefix(text, LOOK_BYTES);
     fit_cut(&text, cut, width)
 }
 
@@ -141,7 +143,7 @@ mod tests {
     #[test]
     fn clusters_that_take_no_cells_are_dropped() {
         // A zero-width space and a byte-order mark. The right-to-left override is already gone:
-        // the core's rule removes it.
+        // the rule for a terminal line removes it.
         assert_eq!(sanitize_and_fit("a\u{200b}b\u{202e}c\u{feff}", 10), "abc");
         assert_eq!(sanitize_and_fit("\u{200b}\u{200b}", 10), "");
     }

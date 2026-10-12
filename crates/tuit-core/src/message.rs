@@ -63,8 +63,8 @@ impl Timestamp {
 /// What a message list shows for one message.
 ///
 /// `from` and `subject` are whatever the message said. They can contain
-/// anything, including the control characters that drive a terminal, so they
-/// are [`Untrusted`]: they can only be shown once made safe.
+/// anything, control characters included, so they are [`Untrusted`]: whoever
+/// shows them decides what safe means.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MessageSummary {
     /// The store's name for the message.

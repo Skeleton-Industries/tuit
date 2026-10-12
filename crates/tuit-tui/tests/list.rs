@@ -525,7 +525,7 @@ fn the_narrowest_screen_still_says_how_to_quit() {
 #[test]
 fn text_that_would_show_nothing_gets_the_placeholder() {
     // Spaces, a tab and a line break (which show as spaces), a character that takes no cells,
-    // and one the core's rule removes.
+    // and one the rule for a terminal line removes.
     for blank in ["   ", "\t\r\n", "\u{200b}\u{200b}", "\u{202e}"] {
         let mut list = MessageList::new(vec![message(1, blank, blank, None)]);
         let rows = lines(&draw(&mut list, 80, 8));

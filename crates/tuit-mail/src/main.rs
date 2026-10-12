@@ -109,7 +109,7 @@ fn main() -> ExitCode {
 /// error line go through it: the tests in `tests/args.rs` hold that for an argument error and
 /// for a store's error, and review for the rest.
 fn fail(message: &Untrusted) -> ExitCode {
-    eprintln!("tuit: {}", message.terminal_line());
+    eprintln!("tuit: {}", tuit_tui::terminal_line(message));
     ExitCode::FAILURE
 }
 
