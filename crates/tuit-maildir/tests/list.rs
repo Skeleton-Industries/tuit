@@ -430,26 +430,191 @@ fn a_blank_name_falls_back_to_the_address() {
 }
 
 #[test]
-fn a_missing_folder_is_an_error_naming_the_path() {
-    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("maildir-does-not-exist");
-    let error = Maildir::new(&root).list().unwrap_err();
-    assert_eq!(error.into_message(), cant_list(&root.join("new")).as_str());
-}
-
-/// The store's error for a folder that can't be listed. The tests compare the whole message,
-/// because this crate has no rule for showing untrusted text and so no way to search inside it.
-fn cant_list(folder: &Path) -> String {
-    let error = fs::read_dir(folder).unwrap_err();
-    format!("can't read {}: {error}", folder.display())
+fn a_missing_path_is_said_to_not_exist() {
+    let path = scratch("missing");
+    assert_list_error(&path, format!("{} doesn't exist", path.display()));
 }
 
 #[test]
-fn a_missing_new_folder_is_an_error_naming_the_path() {
-    let maildir = TestMaildir::new("no-new");
-    fs::remove_dir(maildir.root.join("new")).unwrap();
-    let error = Maildir::new(&maildir.root).list().unwrap_err();
-    let missing = maildir.root.join("new");
-    assert_eq!(error.into_message(), cant_list(&missing).as_str());
+fn an_empty_folder_is_not_a_maildir() {
+    let path = scratch("empty");
+    fs::create_dir_all(&path).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} isn't a Maildir: it has no \"new\" folder",
+            path.display()
+        ),
+    );
+    fs::remove_dir_all(&path).unwrap();
+}
+
+#[test]
+fn a_folder_with_cur_but_no_new_is_not_a_maildir() {
+    let path = scratch("cur-only");
+    fs::create_dir_all(path.join("cur")).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} isn't a Maildir: it has no \"new\" folder",
+            path.display()
+        ),
+    );
+    fs::remove_dir_all(&path).unwrap();
+}
+
+#[test]
+fn a_folder_with_new_but_no_cur_is_not_a_maildir() {
+    let path = scratch("new-only");
+    fs::create_dir_all(path.join("new")).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} isn't a Maildir: it has no \"cur\" folder",
+            path.display()
+        ),
+    );
+    fs::remove_dir_all(&path).unwrap();
+}
+
+#[test]
+fn a_plain_file_is_not_a_maildir() {
+    let path = scratch("plain-file");
+    fs::write(&path, "hello").unwrap();
+    assert_list_error(
+        &path,
+        format!("{} isn't a Maildir: it isn't a folder", path.display()),
+    );
+    fs::remove_file(&path).unwrap();
+}
+
+#[test]
+fn a_file_named_new_is_not_a_folder() {
+    let path = scratch("file-as-new");
+    fs::create_dir_all(path.join("cur")).unwrap();
+    fs::write(path.join("new"), "hello").unwrap();
+    assert_list_error(
+        &path,
+        format!("{} isn't a Maildir: \"new\" isn't a folder", path.display()),
+    );
+    fs::remove_dir_all(&path).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_path_through_a_file_keeps_the_systems_own_error() {
+    let file = scratch("file-with-slash");
+    fs::write(&file, "hello").unwrap();
+    let path = file.join("");
+    // `file/` can't be looked at either, so the error is the one from looking at it.
+    let error = fs::metadata(&path).unwrap_err();
+    assert_list_error(&path, format!("can't read {}: {error}", path.display()));
+    fs::remove_file(&file).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_cur_that_is_a_link_to_nothing_is_said_to_be_one() {
+    use std::os::unix::fs::symlink;
+
+    let path = scratch("dangling-cur");
+    fs::create_dir_all(path.join("new")).unwrap();
+    symlink(scratch("dangling-cur-target"), path.join("cur")).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} isn't a Maildir: \"cur\" is a link to something that doesn't exist",
+            path.display()
+        ),
+    );
+    fs::remove_dir_all(&path).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_to_nothing_is_said_to_be_one() {
+    use std::os::unix::fs::symlink;
+
+    let path = scratch("dangling");
+    symlink(scratch("dangling-target"), &path).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} is a link to something that doesn't exist",
+            path.display()
+        ),
+    );
+    fs::remove_file(&path).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_to_a_folder_that_is_not_a_maildir_is_still_a_folder() {
+    use std::os::unix::fs::symlink;
+
+    let target = scratch("link-target");
+    fs::create_dir_all(&target).unwrap();
+    let path = scratch("link-to-folder");
+    symlink(&target, &path).unwrap();
+    assert_list_error(
+        &path,
+        format!(
+            "{} isn't a Maildir: it has no \"new\" folder",
+            path.display()
+        ),
+    );
+    fs::remove_file(&path).unwrap();
+    fs::remove_dir_all(&target).unwrap();
+}
+
+#[cfg(unix)]
+#[test]
+fn a_folder_that_may_not_be_read_keeps_the_systems_own_error() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let maildir = TestMaildir::new("no-permission");
+    let new = maildir.root.join("new");
+    fs::set_permissions(&new, fs::Permissions::from_mode(0o000)).unwrap();
+    let refused = fs::read_dir(&new).err();
+    let listed = Maildir::new(&maildir.root).list();
+    // Put it back before asserting, or a failure leaves a folder that can't be removed.
+    fs::set_permissions(&new, fs::Permissions::from_mode(0o700)).unwrap();
+    // Root can read anything, so there is nothing to see when the tests run as root.
+    if let Some(error) = refused {
+        let expected = format!("can't read {}: {error}", new.display());
+        assert_eq!(listed.unwrap_err().into_message(), expected.as_str());
+    }
+}
+
+#[test]
+fn a_maildir_without_tmp_still_lists() {
+    let maildir = TestMaildir::new("no-tmp");
+    fs::remove_dir(maildir.root.join("tmp")).unwrap();
+    maildir.add("new", "1", "Subject: hi\n\nbody\n");
+    assert_eq!(maildir.list().len(), 1);
+}
+
+#[test]
+fn a_path_with_control_characters_is_named_as_given_in_the_error() {
+    // The store passes the text on untouched: showing it safely is for whoever shows it.
+    let path = scratch("bad\u{1b}[2Jname");
+    assert_list_error(&path, format!("{} doesn't exist", path.display()));
+}
+
+/// Checks the error from listing `root` against the whole `expected` message. The tests compare
+/// the whole message, because this crate has no rule for showing untrusted text and so no way
+/// to search inside it.
+fn assert_list_error(root: &Path, expected: String) {
+    let error = Maildir::new(root).list().unwrap_err();
+    assert_eq!(error.into_message(), expected.as_str());
+}
+
+/// A path under Cargo's test directory with nothing at it.
+fn scratch(name: &str) -> PathBuf {
+    let path = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("maildir-{name}"));
+    let _ = fs::remove_dir_all(&path);
+    let _ = fs::remove_file(&path);
+    path
 }
 
 #[test]

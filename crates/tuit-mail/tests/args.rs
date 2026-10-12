@@ -83,9 +83,53 @@ fn a_missing_folder_is_a_one_line_error_naming_it() {
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
-    assert!(stderr.starts_with("tuit: "), "{stderr}");
-    assert!(stderr.contains("no-such-maildir"), "{stderr}");
-    assert!(!stderr.contains("needs a terminal"), "{stderr}");
+    assert_eq!(
+        stderr.trim_end(),
+        format!("tuit: {} doesn't exist", path.display())
+    );
+}
+
+#[test]
+fn a_folder_that_is_not_a_maildir_is_named_as_given() {
+    // A relative path, so the message can only name it by repeating what was typed.
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    fs::create_dir_all(tmp.join("plain-folder")).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_tuit"))
+        .arg("plain-folder")
+        .current_dir(tmp)
+        .stdin(Stdio::null())
+        .output()
+        .expect("failed to run the tuit binary");
+    fs::remove_dir_all(tmp.join("plain-folder")).unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        stderr.trim_end(),
+        "tuit: plain-folder isn't a Maildir: it has no \"new\" folder"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_folder_that_is_not_a_maildir_is_cleaned_when_named() {
+    // The folder exists, so this is not the "doesn't exist" line, and its name has an escape
+    // and a newline in it.
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let name = "plain\x1b[31m\nfolder";
+    fs::create_dir_all(tmp.join(name)).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_tuit"))
+        .arg(name)
+        .current_dir(tmp)
+        .stdin(Stdio::null())
+        .output()
+        .expect("failed to run the tuit binary");
+    fs::remove_dir_all(tmp.join(name)).unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        stderr.trim_end(),
+        "tuit: plain\u{fffd}[31m folder isn't a Maildir: it has no \"new\" folder"
+    );
 }
 
 #[test]

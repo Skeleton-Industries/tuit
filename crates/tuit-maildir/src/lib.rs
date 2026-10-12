@@ -35,19 +35,25 @@ impl MailStore for Maildir {
         // One moved between the two reads then shows twice, not never. Other
         // renames while we read can still hide a message or repeat it.
         for folder in ["new", "cur"] {
-            read_folder(&self.path.join(folder), &mut messages)?;
+            read_folder(&self.path, folder, &mut messages)?;
         }
         Ok(messages)
     }
 }
 
-/// Adds a summary for every message file directly inside `folder`.
-fn read_folder(folder: &Path, messages: &mut Vec<MessageSummary>) -> Result<(), StoreError> {
-    let entries = fs::read_dir(folder).map_err(|e| io_error(folder, &e))?;
+/// Adds a summary for every message file directly inside the `name` folder of
+/// the Maildir at `root`.
+fn read_folder(
+    root: &Path,
+    name: &str,
+    messages: &mut Vec<MessageSummary>,
+) -> Result<(), StoreError> {
+    let folder = root.join(name);
+    let entries = fs::read_dir(&folder).map_err(|e| open_error(root, &folder, name, &e))?;
     for entry in entries {
-        let entry = entry.map_err(|e| io_error(folder, &e))?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if name.starts_with('.') {
+        let entry = entry.map_err(|e| io_error(&folder, &e))?;
+        let file_name = entry.file_name().to_string_lossy().into_owned();
+        if file_name.starts_with('.') {
             continue;
         }
         let path = entry.path();
@@ -57,10 +63,44 @@ fn read_folder(folder: &Path, messages: &mut Vec<MessageSummary>) -> Result<(), 
             Ok(None) => continue,
             Err(e) => return Err(io_error(&path, &e)),
         };
-        let id = name.split(':').next().unwrap_or_default();
+        let id = file_name.split(':').next().unwrap_or_default();
         messages.push(summarise(MessageId::new(id), &headers));
     }
     Ok(())
+}
+
+/// The error for a Maildir folder that couldn't be opened. When it is missing
+/// or isn't a folder, looks at what is there to say why, and names the path the
+/// user gave. The look happens only after the failure, so it can't change what
+/// gets read. Like every `StoreError`, the text is cleaned when shown.
+fn open_error(root: &Path, folder: &Path, name: &str, error: &io::Error) -> StoreError {
+    use io::ErrorKind::{NotADirectory, NotFound};
+    let path = root.display();
+    if !matches!(error.kind(), NotFound | NotADirectory) {
+        return io_error(folder, error);
+    }
+    match fs::metadata(root) {
+        // `metadata` follows links, so a link to nothing looks missing. Ask about the link.
+        Err(e) if e.kind() == NotFound && fs::symlink_metadata(root).is_ok() => {
+            StoreError::new(format!("{path} is a link to something that doesn't exist"))
+        }
+        Err(e) if e.kind() == NotFound => StoreError::new(format!("{path} doesn't exist")),
+        Ok(meta) if !meta.is_dir() => {
+            StoreError::new(format!("{path} isn't a Maildir: it isn't a folder"))
+        }
+        // The folder inside can be a link to nothing too, and then `ls` shows it.
+        Ok(_) if error.kind() == NotFound && fs::symlink_metadata(folder).is_ok() => {
+            StoreError::new(format!(
+                "{path} isn't a Maildir: \"{name}\" is a link to something that doesn't exist"
+            ))
+        }
+        Ok(_) if error.kind() == NotFound => StoreError::new(format!(
+            "{path} isn't a Maildir: it has no \"{name}\" folder"
+        )),
+        Ok(_) => StoreError::new(format!("{path} isn't a Maildir: \"{name}\" isn't a folder")),
+        // Couldn't look at the path itself, as with `file/`: say what failed there.
+        Err(e) => io_error(root, &e),
+    }
 }
 
 fn io_error(path: &Path, error: &io::Error) -> StoreError {
