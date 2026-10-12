@@ -5,8 +5,13 @@
 //! [`run`] takes over the terminal and shows the message list. [`MessageList`] is the same list
 //! without a terminal: feed it events and draw it into any ratatui buffer, such as the
 //! in-memory `TestBackend`.
+//!
+//! [`TerminalLine`] is the rule that makes text from outside safe for one line of a terminal:
+//! `text.sanitize_with(&TerminalLine)`. It lives here because this is the crate that knows what
+//! a terminal is; the command line uses it for its error lines.
 
 mod list;
+mod safe;
 mod style;
 mod text;
 
@@ -17,6 +22,7 @@ use ratatui::crossterm::event;
 use tuit_core::MessageSummary;
 
 pub use list::{MIN_HEIGHT, MIN_WIDTH, MessageList, Update};
+pub use safe::TerminalLine;
 
 /// Takes over the terminal, shows `messages` in a list, and returns when the user quits. The
 /// terminal is put back as it was, including if the program panics. It is not put back if the

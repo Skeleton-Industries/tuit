@@ -1,8 +1,7 @@
 //! Somewhere messages are kept, and what you can ask of it.
 
-use std::fmt;
-
 use crate::message::MessageSummary;
+use crate::untrusted::Untrusted;
 
 /// Somewhere messages are kept.
 pub trait MailStore {
@@ -15,28 +14,27 @@ pub trait MailStore {
     fn list(&self) -> Result<Vec<MessageSummary>, StoreError>;
 }
 
-/// A store couldn't do what was asked.
+/// A store couldn't do what was asked. The message can carry file names, so it is
+/// [`Untrusted`]. There is no `Display`, because printing would mean the core choosing a rule for
+/// where the text goes; the edge that shows the error takes the message and cleans it.
 #[derive(Debug)]
 pub struct StoreError {
-    message: String,
+    message: Untrusted,
 }
 
 impl StoreError {
     /// Makes an error with a message for a person to read.
     pub fn new(message: impl Into<String>) -> Self {
         Self {
-            message: message.into(),
+            message: Untrusted::new(message),
         }
     }
-}
 
-impl fmt::Display for StoreError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.message)
+    /// The message, to be made safe for wherever it is going.
+    pub fn into_message(self) -> Untrusted {
+        self.message
     }
 }
-
-impl std::error::Error for StoreError {}
 
 /// A store's messages, newest first. Messages with no date come last.
 /// Messages with the same date are ordered by id, so the order doesn't depend
@@ -51,11 +49,7 @@ pub fn list_newest_first(
     let mut messages = store.list()?;
     // `None` sorts before any `Some`, so comparing `b` to `a` puts the newest
     // first and the undated last.
-    messages.sort_by(|a, b| {
-        b.date
-            .cmp(&a.date)
-            .then_with(|| a.id.as_str().cmp(b.id.as_str()))
-    });
+    messages.sort_by(|a, b| b.date.cmp(&a.date).then_with(|| a.id.cmp(&b.id)));
     Ok(messages)
 }
 
@@ -78,14 +72,18 @@ mod tests {
     fn msg(id: &str, date: Option<i64>) -> MessageSummary {
         MessageSummary {
             id: MessageId::new(id),
-            from: String::new(),
-            subject: String::new(),
+            from: Untrusted::default(),
+            subject: Untrusted::default(),
             date: date.map(Timestamp::from_unix_seconds),
         }
     }
 
-    fn ids(messages: &[MessageSummary]) -> Vec<&str> {
-        messages.iter().map(|m| m.id.as_str()).collect()
+    fn ids(messages: &[MessageSummary]) -> Vec<MessageId> {
+        messages.iter().map(|m| m.id.clone()).collect()
+    }
+
+    fn named<const N: usize>(names: [&str; N]) -> Vec<MessageId> {
+        names.into_iter().map(MessageId::new).collect()
     }
 
     #[test]
@@ -96,7 +94,7 @@ mod tests {
             msg("c", Some(200)),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["b", "c", "a"]);
+        assert_eq!(ids(&sorted), named(["b", "c", "a"]));
     }
 
     #[test]
@@ -107,7 +105,7 @@ mod tests {
             msg("c", Some(10)),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["c", "b", "a"]);
+        assert_eq!(ids(&sorted), named(["c", "b", "a"]));
     }
 
     #[test]
@@ -119,14 +117,14 @@ mod tests {
             msg("b", None),
         ]));
         let sorted = list_newest_first(&store).unwrap();
-        assert_eq!(ids(&sorted), ["a", "z", "b", "m"]);
+        assert_eq!(ids(&sorted), named(["a", "z", "b", "m"]));
     }
 
     #[test]
     fn a_store_behind_a_trait_object_can_be_listed() {
         let store: Box<dyn MailStore> = Box::new(Fake(Ok(vec![msg("a", Some(1))])));
         let sorted = list_newest_first(store.as_ref()).unwrap();
-        assert_eq!(ids(&sorted), ["a"]);
+        assert_eq!(ids(&sorted), named(["a"]));
     }
 
     #[test]
@@ -136,8 +134,14 @@ mod tests {
     }
 
     #[test]
+    fn a_store_error_hands_over_its_message_as_it_came() {
+        let error = StoreError::new("can't read a\nb\x1b[2J/new");
+        assert_eq!(error.into_message(), "can't read a\nb\x1b[2J/new");
+    }
+
+    #[test]
     fn a_store_error_is_passed_on() {
         let error = list_newest_first(&Fake(Err("no such place".into()))).unwrap_err();
-        assert_eq!(error.to_string(), "no such place");
+        assert_eq!(error.into_message(), "no such place");
     }
 }

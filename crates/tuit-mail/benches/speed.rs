@@ -23,7 +23,7 @@ use std::time::{Duration, Instant};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use tuit_core::{MessageId, MessageSummary, Timestamp};
+use tuit_core::{MessageId, MessageSummary, Timestamp, Untrusted};
 use tuit_maildir::Maildir;
 use tuit_tui::MessageList;
 
@@ -167,8 +167,10 @@ fn redraw() -> Vec<Duration> {
     let messages = (0..REDRAW_MESSAGES)
         .map(|n| MessageSummary {
             id: MessageId::new(format!("m{n}")),
-            from: format!("Sender Number {n}"),
-            subject: format!("Made-up message number {n} with a subject of ordinary length"),
+            from: Untrusted::new(format!("Sender Number {n}")),
+            subject: Untrusted::new(format!(
+                "Made-up message number {n} with a subject of ordinary length"
+            )),
             date: Some(Timestamp::from_unix_seconds(
                 1_700_000_000 + (n as i64 * 7_919) % 31_536_000,
             )),

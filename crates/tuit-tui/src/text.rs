@@ -1,7 +1,10 @@
 //! Making mail text safe and the right width for a terminal.
 
 use ratatui::buffer::CellWidth;
+use tuit_core::Untrusted;
 use unicode_segmentation::UnicodeSegmentation;
+
+use crate::safe::TerminalLinePrefix;
 
 const ELLIPSIS: &str = "…";
 
@@ -10,55 +13,66 @@ const ELLIPSIS: &str = "…";
 /// depend on how much text the mail carries.
 const LOOK_BYTES: usize = 4096;
 
-/// Replaces every control character (C0, DEL and C1: newline, tab, and the escape that starts a
-/// terminal sequence) with a space. The rest of a sequence is left behind as plain, harmless
-/// text.
-pub(crate) fn sanitize(text: &str) -> String {
-    text.chars()
-        .map(|c| if c.is_control() { ' ' } else { c })
-        .collect()
+/// Mail text made safe and cut to at most `width` terminal cells, with `…` where it was cut.
+///
+/// Made safe by the same rule as [`crate::TerminalLine`], applied to a prefix; cut as [`fit`]
+/// cuts. Only the first `LOOK_BYTES` of `text` are looked at. Longer text counts as cut, so
+/// where there is room for a `…` it gets one, even if what was looked at fits.
+pub(crate) fn sanitize_and_fit(text: &Untrusted, width: usize) -> String {
+    let (text, cut) = text.sanitize_with(&TerminalLinePrefix {
+        max_bytes: LOOK_BYTES,
+    });
+    if cut {
+        cut_short(&text, width)
+    } else {
+        fit(&text, width)
+    }
 }
 
-/// `text` made safe and cut to at most `width` terminal cells, with `…` where it was cut.
+/// tuit's own text cut to at most `width` terminal cells, with `…` where it was cut. Mail text
+/// goes through [`sanitize_and_fit`], which is the only way in for it.
 ///
-/// Cuts fall between grapheme clusters, so a letter keeps its combining marks and an emoji made
-/// of several characters stays whole. Widths are counted one cluster at a time with ratatui's own
-/// `cell_width`, so the cut agrees with what ratatui draws; a test holds that for a set of
-/// awkward text. A cluster that takes no cells by itself (a zero-width
-/// space, a text-direction override) is dropped. Only the first `LOOK_BYTES` of `text` are
-/// looked at; longer text counts as cut.
-pub(crate) fn sanitize_and_fit(text: &str, width: usize) -> String {
-    let end = text.floor_char_boundary(LOOK_BYTES);
-    let mut cut = end < text.len();
-    let text = sanitize(&text[..end]);
-    let mut out = String::new();
+/// Text that fits is returned uncut; text that doesn't keeps one cell for the `…`, and at a
+/// `width` of 0 nothing is returned. Cuts fall between grapheme clusters, so a letter keeps its
+/// combining marks and an emoji made of several characters stays whole. Widths are counted one
+/// cluster at a time with ratatui's own `cell_width`, so the cut agrees with what ratatui draws;
+/// a test holds that for a set of awkward text. A cluster that takes no cells by itself (a
+/// zero-width space) is dropped, cut or not.
+pub(crate) fn fit(text: &str, width: usize) -> String {
+    let (start, all) = start_that_fits(text, width);
+    if all { start } else { cut_short(text, width) }
+}
+
+/// As much of the start of `text` as leaves one cell free, then `…`: at most `width` cells in
+/// all. For text there is more of than will be shown, so the `…` goes on even if `text` would
+/// fit. Clusters are counted and dropped as in [`fit`]. If `width` is 0 there is no room for
+/// the `…` either, and the result is empty.
+fn cut_short(text: &str, width: usize) -> String {
+    let Some(room) = width.checked_sub(1) else {
+        return String::new();
+    };
+    let (mut start, _) = start_that_fits(text, room);
+    start.push_str(ELLIPSIS);
+    start
+}
+
+/// The clusters from the start of `text` that fit in `width` cells, leaving out any that take
+/// no cells, and whether it got to the end of `text`. The loop behind [`fit`] and [`cut_short`].
+fn start_that_fits(text: &str, width: usize) -> (String, bool) {
+    let mut start = String::new();
     let mut used = 0;
-    // How much of `out` to keep if the ellipsis has to go in after it.
-    let mut keep = 0;
     for grapheme in text.graphemes(true) {
         let cells = usize::from(grapheme.cell_width());
         if cells == 0 {
             continue;
         }
         if used + cells > width {
-            cut = true;
-            break;
+            return (start, false);
         }
-        out.push_str(grapheme);
+        start.push_str(grapheme);
         used += cells;
-        if used < width {
-            keep = out.len();
-        }
     }
-    if !cut {
-        return out;
-    }
-    if width == 0 {
-        return String::new();
-    }
-    out.truncate(keep);
-    out.push_str(ELLIPSIS);
-    out
+    (start, true)
 }
 
 /// How many terminal cells `text` takes when drawn, counted one cluster at a time.
@@ -84,6 +98,10 @@ pub(crate) fn format_date((year, month, day): (i64, u32, u32)) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sanitize_and_fit(text: &str, width: usize) -> String {
+        super::sanitize_and_fit(&Untrusted::new(text), width)
+    }
 
     #[test]
     fn short_text_is_untouched() {
@@ -133,7 +151,8 @@ mod tests {
 
     #[test]
     fn clusters_that_take_no_cells_are_dropped() {
-        // A zero-width space, a right-to-left override and a byte-order mark.
+        // A zero-width space and a byte-order mark. The right-to-left override is already gone:
+        // the rule for a terminal line removes it.
         assert_eq!(sanitize_and_fit("a\u{200b}b\u{202e}c\u{feff}", 10), "abc");
         assert_eq!(sanitize_and_fit("\u{200b}\u{200b}", 10), "");
     }
@@ -190,8 +209,30 @@ mod tests {
     }
 
     #[test]
-    fn controls_become_spaces() {
-        assert_eq!(sanitize("a\x1b[2Jb\nc\td\u{9b}e"), "a [2Jb c d e");
+    fn text_cut_before_it_arrived_gets_the_ellipsis_if_there_is_room() {
+        // It fits with a cell to spare, it fits exactly, and it doesn't fit.
+        assert_eq!(cut_short("abc", 5), "abc…");
+        assert_eq!(cut_short("abc", 4), "abc…");
+        assert_eq!(cut_short("abc", 3), "ab…");
+        assert_eq!(cut_short("abc", 1), "…");
+        // No room for the ellipsis either.
+        assert_eq!(cut_short("abc", 0), "");
+        // Nothing that takes a cell is still more text than was shown.
+        assert_eq!(cut_short("\u{200b}", 5), "…");
+    }
+
+    #[test]
+    fn text_longer_than_is_looked_at_gives_nothing_at_zero_width() {
+        let long = "a".repeat(LOOK_BYTES * 2);
+        assert_eq!(sanitize_and_fit(&long, 0), "");
+    }
+
+    #[test]
+    fn mail_text_is_made_safe_before_it_is_fitted() {
+        assert_eq!(
+            sanitize_and_fit("a\x1b[2Jb\nc\td\u{9b}e", 20),
+            "a\u{fffd}[2Jb c d\u{fffd}e"
+        );
     }
 
     #[test]

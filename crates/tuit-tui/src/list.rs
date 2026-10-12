@@ -8,10 +8,10 @@ use ratatui::layout::{Alignment, Rect};
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Clear, Widget};
-use tuit_core::MessageSummary;
+use tuit_core::{MessageSummary, Untrusted};
 
 use crate::style;
-use crate::text::{cells, format_date, sanitize_and_fit};
+use crate::text::{cells, fit, format_date, sanitize_and_fit};
 
 /// Below this width (in terminal columns) the list shows "Terminal too small".
 pub const MIN_WIDTH: u16 = 30;
@@ -219,8 +219,9 @@ fn render_row(
         style::PLACEHOLDER
     };
     // The placeholder goes in when nothing of the text would be seen: it is empty, or only
-    // spaces, control characters or characters that take no cells.
-    let mut field = |x: u16, width: usize, text: &str, none: &str| {
+    // spaces (a tab and a line break show as one) or characters that take no cells. Any other
+    // control character shows as a replacement character, so it counts as something to see.
+    let mut field = |x: u16, width: usize, text: &Untrusted, none: &str| {
         let shown = sanitize_and_fit(text, width);
         if shown.trim().is_empty() {
             put(buf, x, y, width, none, placeholder);
@@ -275,9 +276,9 @@ impl Columns {
     }
 }
 
-/// Writes `text`, made safe and cut to `width` cells, at (`x`, `y`).
+/// Writes `text`, one of tuit's own labels, cut to `width` cells, at (`x`, `y`).
 fn put(buf: &mut Buffer, x: u16, y: u16, width: usize, text: &str, style: Style) {
-    let text = sanitize_and_fit(text, width);
+    let text = fit(text, width);
     buf.set_stringn(x, y, &text, width, style);
 }
 
@@ -289,7 +290,7 @@ fn render_centered(area: Rect, buf: &mut Buffer, lines: &[&str], style: Style) {
         if y >= area.bottom() {
             break;
         }
-        let text = sanitize_and_fit(line, usize::from(area.width));
+        let text = fit(line, usize::from(area.width));
         let x = area.x + (area.width - cells(&text) as u16) / 2;
         buf.set_stringn(x, y, &text, usize::from(area.width), style);
     }

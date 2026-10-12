@@ -4,7 +4,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use tuit_core::{MessageSummary, StoreError, list_newest_first};
+use tuit_core::{MessageSummary, StoreError, Untrusted, list_newest_first};
 use tuit_maildir::Maildir;
 
 const USAGE: &str = "\
@@ -89,12 +89,14 @@ fn main() -> ExitCode {
             eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
-        Err(message) => return fail(&message),
+        Err(message) => return fail(&Untrusted::new(message)),
     };
     // The mail is read before the screen opens, so an error prints to a normal terminal.
     let shown = load(source)
-        .map_err(|error| error.to_string())
-        .and_then(|messages| tuit_tui::run(messages).map_err(|error| error.to_string()));
+        .map_err(StoreError::into_message)
+        .and_then(|messages| {
+            tuit_tui::run(messages).map_err(|error| Untrusted::new(error.to_string()))
+        });
     match shown {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => fail(&message),
@@ -102,17 +104,13 @@ fn main() -> ExitCode {
 }
 
 /// Prints a one-line error to stderr. The message can carry a path or an argument as typed, so
-/// control characters in it, a newline or an escape among them, are shown as `?`.
-fn fail(message: &str) -> ExitCode {
-    eprintln!("tuit: {}", one_line(message));
+/// control characters in it, a newline or an escape among them, are replaced by the rule for a
+/// terminal line. It takes `Untrusted`, so whatever it is given is cleaned. Nothing makes an
+/// error line go through it: the tests in `tests/args.rs` hold that for an argument error and
+/// for a store's error, and review for the rest.
+fn fail(message: &Untrusted) -> ExitCode {
+    eprintln!("tuit: {}", message.sanitize_with(&tuit_tui::TerminalLine));
     ExitCode::FAILURE
-}
-
-fn one_line(message: &str) -> String {
-    message
-        .chars()
-        .map(|c| if c.is_control() { '?' } else { c })
-        .collect()
 }
 
 #[cfg(test)]
@@ -234,21 +232,13 @@ mod tests {
         }
         let loaded = load(Source::Maildir(root.clone()));
         std::fs::remove_dir_all(&root).unwrap();
-        let subjects: Vec<String> = loaded.unwrap().into_iter().map(|m| m.subject).collect();
-        assert_eq!(subjects, ["Newest", "Older", "Oldest"]);
+        let subjects: Vec<Untrusted> = loaded.unwrap().into_iter().map(|m| m.subject).collect();
+        assert_eq!(subjects, ["Newest", "Older", "Oldest"].map(Untrusted::new));
     }
 
     #[test]
     fn the_sample_source_loads_the_made_up_messages() {
         assert_eq!(load(Source::Sample).unwrap(), sample::messages());
         assert!(!sample::messages().is_empty());
-    }
-
-    #[test]
-    fn an_error_is_kept_to_one_line() {
-        assert_eq!(
-            one_line("can't read a\nb\x1b[2J/new"),
-            "can't read a?b?[2J/new"
-        );
     }
 }
