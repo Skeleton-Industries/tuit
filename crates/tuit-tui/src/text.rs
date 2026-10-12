@@ -16,56 +16,63 @@ const LOOK_BYTES: usize = 4096;
 /// Mail text made safe and cut to at most `width` terminal cells, with `…` where it was cut.
 ///
 /// Made safe by the same rule as [`crate::TerminalLine`], applied to a prefix; cut as [`fit`]
-/// cuts. Only the first `LOOK_BYTES` of `text` are looked at; longer text counts as cut.
+/// cuts. Only the first `LOOK_BYTES` of `text` are looked at. Longer text counts as cut, so
+/// where there is room for a `…` it gets one, even if what was looked at fits.
 pub(crate) fn sanitize_and_fit(text: &Untrusted, width: usize) -> String {
     let (text, cut) = text.sanitize_with(&TerminalLinePrefix {
         max_bytes: LOOK_BYTES,
     });
-    fit_cut(&text, cut, width)
+    if cut {
+        cut_short(&text, width)
+    } else {
+        fit(&text, width)
+    }
 }
 
 /// tuit's own text cut to at most `width` terminal cells, with `…` where it was cut. Mail text
 /// goes through [`sanitize_and_fit`], which is the only way in for it.
 ///
-/// Cuts fall between grapheme clusters, so a letter keeps its combining marks and an emoji made
-/// of several characters stays whole. Widths are counted one cluster at a time with ratatui's own
-/// `cell_width`, so the cut agrees with what ratatui draws; a test holds that for a set of
-/// awkward text. A cluster that takes no cells by itself (a zero-width space) is dropped.
+/// Text that fits is returned uncut; text that doesn't keeps one cell for the `…`, and at a
+/// `width` of 0 nothing is returned. Cuts fall between grapheme clusters, so a letter keeps its
+/// combining marks and an emoji made of several characters stays whole. Widths are counted one
+/// cluster at a time with ratatui's own `cell_width`, so the cut agrees with what ratatui draws;
+/// a test holds that for a set of awkward text. A cluster that takes no cells by itself (a
+/// zero-width space) is dropped, cut or not.
 pub(crate) fn fit(text: &str, width: usize) -> String {
-    fit_cut(text, false, width)
+    let (start, all) = start_that_fits(text, width);
+    if all { start } else { cut_short(text, width) }
 }
 
-/// `fit`, for text that may already have lost its end (`cut`), which gets the `…` even if what
-/// is left fits.
-fn fit_cut(text: &str, mut cut: bool, width: usize) -> String {
-    let mut out = String::new();
+/// As much of the start of `text` as leaves one cell free, then `…`: at most `width` cells in
+/// all. For text there is more of than will be shown, so the `…` goes on even if `text` would
+/// fit. Clusters are counted and dropped as in [`fit`]. If `width` is 0 there is no room for
+/// the `…` either, and the result is empty.
+fn cut_short(text: &str, width: usize) -> String {
+    let Some(room) = width.checked_sub(1) else {
+        return String::new();
+    };
+    let (mut start, _) = start_that_fits(text, room);
+    start.push_str(ELLIPSIS);
+    start
+}
+
+/// The clusters from the start of `text` that fit in `width` cells, leaving out any that take
+/// no cells, and whether it got to the end of `text`. The loop behind [`fit`] and [`cut_short`].
+fn start_that_fits(text: &str, width: usize) -> (String, bool) {
+    let mut start = String::new();
     let mut used = 0;
-    // How much of `out` to keep if the ellipsis has to go in after it.
-    let mut keep = 0;
     for grapheme in text.graphemes(true) {
         let cells = usize::from(grapheme.cell_width());
         if cells == 0 {
             continue;
         }
         if used + cells > width {
-            cut = true;
-            break;
+            return (start, false);
         }
-        out.push_str(grapheme);
+        start.push_str(grapheme);
         used += cells;
-        if used < width {
-            keep = out.len();
-        }
     }
-    if !cut {
-        return out;
-    }
-    if width == 0 {
-        return String::new();
-    }
-    out.truncate(keep);
-    out.push_str(ELLIPSIS);
-    out
+    (start, true)
 }
 
 /// How many terminal cells `text` takes when drawn, counted one cluster at a time.
