@@ -1,7 +1,5 @@
 //! Somewhere messages are kept, and what you can ask of it.
 
-use std::fmt;
-
 use crate::message::MessageSummary;
 use crate::untrusted::Untrusted;
 
@@ -16,8 +14,9 @@ pub trait MailStore {
     fn list(&self) -> Result<Vec<MessageSummary>, StoreError>;
 }
 
-/// A store couldn't do what was asked. The message can carry file names, so it is shown only
-/// once made safe.
+/// A store couldn't do what was asked. The message can carry file names, so it is
+/// [`Untrusted`]. There is no `Display`, because printing would mean the core choosing a rule for
+/// where the text goes; the edge that shows the error takes the message and cleans it.
 #[derive(Debug)]
 pub struct StoreError {
     message: Untrusted,
@@ -30,15 +29,12 @@ impl StoreError {
             message: Untrusted::new(message),
         }
     }
-}
 
-impl fmt::Display for StoreError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.message.terminal_line())
+    /// The message, to be made safe for wherever it is going.
+    pub fn into_message(self) -> Untrusted {
+        self.message
     }
 }
-
-impl std::error::Error for StoreError {}
 
 /// A store's messages, newest first. Messages with no date come last.
 /// Messages with the same date are ordered by id, so the order doesn't depend
@@ -138,14 +134,14 @@ mod tests {
     }
 
     #[test]
-    fn a_store_error_is_safe_to_print() {
+    fn a_store_error_hands_over_its_message_as_it_came() {
         let error = StoreError::new("can't read a\nb\x1b[2J/new");
-        assert_eq!(error.to_string(), "can't read a b\u{fffd}[2J/new");
+        assert_eq!(error.into_message(), "can't read a\nb\x1b[2J/new");
     }
 
     #[test]
     fn a_store_error_is_passed_on() {
         let error = list_newest_first(&Fake(Err("no such place".into()))).unwrap_err();
-        assert_eq!(error.to_string(), "no such place");
+        assert_eq!(error.into_message(), "no such place");
     }
 }

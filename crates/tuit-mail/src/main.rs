@@ -89,12 +89,14 @@ fn main() -> ExitCode {
             eprintln!("{USAGE}");
             return ExitCode::FAILURE;
         }
-        Err(message) => return fail(&message),
+        Err(message) => return fail(&Untrusted::new(message)),
     };
     // The mail is read before the screen opens, so an error prints to a normal terminal.
     let shown = load(source)
-        .map_err(|error| error.to_string())
-        .and_then(|messages| tuit_tui::run(messages).map_err(|error| error.to_string()));
+        .map_err(StoreError::into_message)
+        .and_then(|messages| {
+            tuit_tui::run(messages).map_err(|error| Untrusted::new(error.to_string()))
+        });
     match shown {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => fail(&message),
@@ -102,10 +104,12 @@ fn main() -> ExitCode {
 }
 
 /// Prints a one-line error to stderr. The message can carry a path or an argument as typed, so
-/// control characters in it, a newline or an escape among them, are replaced by the one rule
-/// for untrusted text.
-fn fail(message: &str) -> ExitCode {
-    eprintln!("tuit: {}", Untrusted::new(message).terminal_line());
+/// control characters in it, a newline or an escape among them, are replaced by the rule for a
+/// terminal line. It takes `Untrusted`, so whatever it is given is cleaned. Nothing makes an
+/// error line go through it: the tests in `tests/args.rs` hold that for an argument error and
+/// for a store's error, and review for the rest.
+fn fail(message: &Untrusted) -> ExitCode {
+    eprintln!("tuit: {}", message.terminal_line());
     ExitCode::FAILURE
 }
 

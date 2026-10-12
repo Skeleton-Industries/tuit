@@ -433,10 +433,14 @@ fn a_blank_name_falls_back_to_the_address() {
 fn a_missing_folder_is_an_error_naming_the_path() {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("maildir-does-not-exist");
     let error = Maildir::new(&root).list().unwrap_err();
-    assert!(
-        error.to_string().contains("maildir-does-not-exist"),
-        "{error}"
-    );
+    assert_eq!(error.into_message(), cant_list(&root.join("new")).as_str());
+}
+
+/// The store's error for a folder that can't be listed. The tests compare the whole message,
+/// because this crate has no rule for showing untrusted text and so no way to search inside it.
+fn cant_list(folder: &Path) -> String {
+    let error = fs::read_dir(folder).unwrap_err();
+    format!("can't read {}: {error}", folder.display())
 }
 
 #[test]
@@ -444,12 +448,8 @@ fn a_missing_new_folder_is_an_error_naming_the_path() {
     let maildir = TestMaildir::new("no-new");
     fs::remove_dir(maildir.root.join("new")).unwrap();
     let error = Maildir::new(&maildir.root).list().unwrap_err();
-    let message = error.to_string();
     let missing = maildir.root.join("new");
-    assert!(
-        message.contains(&missing.display().to_string()),
-        "{message}"
-    );
+    assert_eq!(error.into_message(), cant_list(&missing).as_str());
 }
 
 #[test]
