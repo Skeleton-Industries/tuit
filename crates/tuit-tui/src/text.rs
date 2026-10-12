@@ -209,6 +209,25 @@ mod tests {
     }
 
     #[test]
+    fn text_cut_before_it_arrived_gets_the_ellipsis_if_there_is_room() {
+        // It fits with a cell to spare, it fits exactly, and it doesn't fit.
+        assert_eq!(cut_short("abc", 5), "abc…");
+        assert_eq!(cut_short("abc", 4), "abc…");
+        assert_eq!(cut_short("abc", 3), "ab…");
+        assert_eq!(cut_short("abc", 1), "…");
+        // No room for the ellipsis either.
+        assert_eq!(cut_short("abc", 0), "");
+        // Nothing that takes a cell is still more text than was shown.
+        assert_eq!(cut_short("\u{200b}", 5), "…");
+    }
+
+    #[test]
+    fn text_longer_than_is_looked_at_gives_nothing_at_zero_width() {
+        let long = "a".repeat(LOOK_BYTES * 2);
+        assert_eq!(sanitize_and_fit(&long, 0), "");
+    }
+
+    #[test]
     fn mail_text_is_made_safe_before_it_is_fitted() {
         assert_eq!(
             sanitize_and_fit("a\x1b[2Jb\nc\td\u{9b}e", 20),
