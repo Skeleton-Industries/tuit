@@ -43,6 +43,7 @@ We adopt common guides and don't write our own.
 - The review covers docs and the pull request description as well as code.
 - What gets pushed is what the reviewer read, plus the fixes for what it found. Fixes go on the draft, before the rebuild. A fix that adds something new, and isn't only a correction, is read again.
 - A pull request's description has every section in `.github/pull_request_template.md`, each answered, "None" or "No" included. "Decisions for you" is left out when there is nothing to decide. Other sections may be added.
+- A pull request for a design document in `docs/design/` uses the sections in `docs/design-pull-request-template.md` instead. The rules here for "Decisions for you" and "Review" apply to it too.
 - Keep the description short: aim for one to three lines a section, readable in two minutes. Explaining the Rust wins where the two pull apart. It says what the change is, not how it was arrived at.
 - The "Review" section is one line: how many passes, and the kind of thing they caught. If review caught a real bug, it says so plainly. If a builder wrote the first draft, it says that too.
 - A pull request that touches `crates/tuit-core` says so in its description, and its reviewers check the change for I/O: files, the network, running programs, the environment, the terminal. Review holds that rule. The lint there only catches the obvious.
