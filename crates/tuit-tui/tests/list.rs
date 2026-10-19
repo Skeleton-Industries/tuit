@@ -549,32 +549,10 @@ fn text_of_only_control_characters_shows_replacement_characters() {
 }
 
 #[test]
-fn a_date_too_long_for_its_column_is_left_out() {
-    // "9999-12-30" fits in 10 cells. "-9999-12-30" is 11, and isn't shown cut short.
-    let year_9999 = 253_402_207_200;
-    let too_wide = jiff::civil::date(-9999, 12, 30)
-        .to_zoned(jiff::tz::TimeZone::UTC)
-        .unwrap()
-        .timestamp()
-        .as_second();
-    let mut list = new_list(vec![
-        message(1, "Ada", "Too wide", Some(too_wide)),
-        message(2, "Ada", "Year 9999", Some(year_9999)),
-    ]);
-    let rows = lines(&draw(&mut list, 80, 8));
-    assert!(
-        rows[1].trim_end_matches('│').trim().ends_with("Too wide"),
-        "{}",
-        rows[1]
-    );
-    assert!(rows[2].contains("9999-12-30"), "{}", rows[2]);
-}
-
-#[test]
 fn a_date_the_date_library_cannot_hold_leaves_the_date_column_empty() {
-    // The first and last second it can hold, and the one on either side of each, and the
-    // extremes of `i64`. None of them panics, and only the last second it can hold
-    // shows a date: the first is in the year -9999, which is too long for the column.
+    // The first and last second it can hold, the one on either side of each, and the
+    // extremes of `i64`. None of them panics. Only the last second it can hold shows a date:
+    // the first is in the year -9999, before the year 0, so it has none.
     let first = -377_705_023_201;
     let last = 253_402_207_200;
     let seconds = [
@@ -726,8 +704,7 @@ fn dates_are_shown_by_the_calendar_of_the_zone_the_list_was_given() {
 
 #[test]
 fn a_year_before_zero_leaves_the_date_column_empty() {
-    // 0000-01-01 is shown whole; the year before it is signed, so one cell too long for the
-    // column, and is left out and not cut short to look like another year.
+    // 0000-01-01 is shown; the year before it has no date, and is left out.
     let year_0 = -62_167_219_200;
     let mut list = new_list(vec![
         message(1, "Ada", "Year zero", Some(year_0)),
