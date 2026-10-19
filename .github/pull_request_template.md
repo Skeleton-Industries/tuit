@@ -31,3 +31,7 @@
 ## Review
 
 <!-- One line: how many passes, and the kind of thing they caught. Say plainly if review caught a real bug, and if a builder wrote the first draft. -->
+
+## How confident I am
+
+<!-- How sure the author is, and where a second pair of eyes would help most. -->
