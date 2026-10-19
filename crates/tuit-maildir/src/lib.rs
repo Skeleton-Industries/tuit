@@ -5,8 +5,9 @@
 use std::fs::{self, DirEntry, File};
 use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
-use mail_parser::MessageParser;
+use mail_parser::{HeaderName, MessageParser};
 use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp, Untrusted};
 
 /// How much of a file is read, at most, when looking for the end of its headers.
@@ -14,6 +15,19 @@ use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp, Unt
 /// far smaller, and a file with no blank line would otherwise be read to its
 /// end.
 const MAX_HEADER_BYTES: u64 = 1024 * 1024;
+
+/// The parser, built once and shared. It decodes only the three headers a
+/// summary is made from, and passes over the rest without decoding them. A
+/// summary that reads a fourth header needs it added here too, or it comes back
+/// empty; the test `the_parser_gives_what_the_full_parser_gives` catches that for
+/// the common headers it includes.
+static PARSER: LazyLock<MessageParser> = LazyLock::new(|| {
+    MessageParser::new()
+        .header_date(HeaderName::Date)
+        .header_text(HeaderName::Subject)
+        .header_address(HeaderName::From)
+        .default_header_ignore()
+});
 
 /// One Maildir folder on disk.
 #[derive(Debug, Clone)]
@@ -167,13 +181,18 @@ fn read_headers(path: &Path) -> io::Result<Option<Vec<u8>>> {
 /// Picks the summary fields out of a header block. Anything that can't be read
 /// is left empty.
 fn summarise(id: MessageId, headers: &[u8]) -> MessageSummary {
+    summarise_with(&PARSER, id, headers)
+}
+
+/// `summarise`, with the parser given, so a test can compare parsers.
+fn summarise_with(parser: &MessageParser, id: MessageId, headers: &[u8]) -> MessageSummary {
     let mut summary = MessageSummary {
         id,
         from: Untrusted::default(),
         subject: Untrusted::default(),
         date: None,
     };
-    let Some(message) = MessageParser::default().parse_headers(headers) else {
+    let Some(message) = parser.parse_headers(headers) else {
         return summary;
     };
     if let Some(sender) = message.from().and_then(|from| from.first()) {
@@ -187,4 +206,52 @@ fn summarise(id: MessageId, headers: &[u8]) -> MessageSummary {
         .filter(|date| date.is_valid())
         .map(|date| Timestamp::from_unix_seconds(date.to_timestamp()));
     summary
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Header lines, some well formed and some not, to be put together in every
+    /// order. Several leave a quote, comment or bracket open, to test where a
+    /// header the parser passes over is taken to end. The well-formed headers
+    /// that aren't shown are there so that a summary reading one fails the test.
+    const PIECES: [&str; 18] = [
+        "From: Ada Example <ada@example.org>\n",
+        "Subject: =?UTF-8?B?w6l0w6k=?= plans\n",
+        "Date: Fri, 2 Oct 2026 09:30:00 +0100\n",
+        "FROM: \"Bo, Sample\" <bo@example.org>\n",
+        "subject: folded\n over two lines\n",
+        "To: \"unclosed <to@example.org>\n",
+        "Content-Type: text/plain; charset=\"utf-8\n",
+        "Received: from x (comment (nested\n",
+        "Message-ID: <unclosed@example.org\n",
+        "From-Foo: not a sender\n",
+        "Reply-To: reply@example.org\n",
+        "Message-ID: <id@example.org>\n",
+        "To: Cy <cy@example.org>\n",
+        "Cc: Di <di@example.org>\n",
+        "Sender: Ed <ed@example.org>\n",
+        "In-Reply-To: <earlier@example.org>\n",
+        "References: <first@example.org> <earlier@example.org>\n",
+        "a line with no colon\n",
+    ];
+
+    #[test]
+    fn the_parser_gives_what_the_full_parser_gives() {
+        let full = MessageParser::default();
+        for a in PIECES {
+            for b in PIECES {
+                for c in PIECES {
+                    let headers = format!("{a}{b}{c}\n");
+                    let id = || MessageId::new("x");
+                    assert_eq!(
+                        summarise_with(&PARSER, id(), headers.as_bytes()),
+                        summarise_with(&full, id(), headers.as_bytes()),
+                        "{headers}"
+                    );
+                }
+            }
+        }
+    }
 }
