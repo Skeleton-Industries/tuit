@@ -34,30 +34,6 @@ impl Timestamp {
     pub fn unix_seconds(self) -> i64 {
         self.0
     }
-
-    /// The calendar date in UTC as (year, month 1-12, day 1-31). The calendar
-    /// is today's, run backwards without limit, so the year can be zero or
-    /// negative.
-    pub fn utc_date(self) -> (i64, u32, u32) {
-        // Howard Hinnant's "civil from days" algorithm, on a calendar that
-        // starts on 1 March so the leap day is the last day of the year.
-        let days = self.0.div_euclid(86_400);
-        let z = days + 719_468;
-        let era = z.div_euclid(146_097);
-        let day_of_era = z.rem_euclid(146_097);
-        let year_of_era =
-            (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
-        let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-        let month_from_march = (5 * day_of_year + 2) / 153;
-        let day = day_of_year - (153 * month_from_march + 2) / 5 + 1;
-        let month = if month_from_march < 10 {
-            month_from_march + 3
-        } else {
-            month_from_march - 9
-        };
-        let year = year_of_era + era * 400 + i64::from(month <= 2);
-        (year, month as u32, day as u32)
-    }
 }
 
 /// What a message list shows for one message.
@@ -81,10 +57,6 @@ pub struct MessageSummary {
 mod tests {
     use super::*;
 
-    fn date(seconds: i64) -> (i64, u32, u32) {
-        Timestamp::from_unix_seconds(seconds).utc_date()
-    }
-
     #[test]
     fn ids_compare_and_order_by_their_text() {
         assert_eq!(MessageId::new("abc:2,S"), MessageId::new("abc:2,S"));
@@ -101,49 +73,6 @@ mod tests {
     #[test]
     fn timestamp_round_trips() {
         assert_eq!(Timestamp::from_unix_seconds(-5).unix_seconds(), -5);
-    }
-
-    #[test]
-    fn the_epoch() {
-        assert_eq!(date(0), (1970, 1, 1));
-    }
-
-    #[test]
-    fn the_last_second_before_the_epoch() {
-        assert_eq!(date(-1), (1969, 12, 31));
-    }
-
-    #[test]
-    fn the_last_second_of_a_day() {
-        assert_eq!(date(86_399), (1970, 1, 1));
-        assert_eq!(date(86_400), (1970, 1, 2));
-    }
-
-    #[test]
-    fn a_leap_day() {
-        // 2000-02-29 00:00:00 UTC
-        assert_eq!(date(951_782_400), (2000, 2, 29));
-        assert_eq!(date(951_782_400 + 86_399), (2000, 2, 29));
-        assert_eq!(date(951_782_400 + 86_400), (2000, 3, 1));
-    }
-
-    #[test]
-    fn a_century_that_is_not_a_leap_year() {
-        // 1900-03-01 00:00:00 UTC follows 1900-02-28.
-        assert_eq!(date(-2_203_891_200), (1900, 3, 1));
-        assert_eq!(date(-2_203_891_201), (1900, 2, 28));
-    }
-
-    #[test]
-    fn a_recent_date() {
-        // 2026-10-01 00:00:00 UTC
-        assert_eq!(date(1_790_812_800), (2026, 10, 1));
-    }
-
-    #[test]
-    fn a_date_long_before_1970() {
-        // 1600-01-01 00:00:00 UTC
-        assert_eq!(date(-11_676_096_000), (1600, 1, 1));
     }
 
     #[test]
