@@ -1,16 +1,17 @@
 //! Made-up messages, which `tuit --sample` shows in place of a real Maildir. Everything here is
-//! invented, and the dates are fixed so the screen looks the same on any day. The set is a test
-//! card for the look: long and empty fields, wide and combining characters, an emoji, a missing
-//! date, and dates spread over more than a year. Newest first with the undated one last, as the
-//! core lists them.
+//! invented, and the dates are fixed so the screen looks the same on any day and in any zone.
+//! The set is a test card for the look: long and empty fields, wide and combining characters, an
+//! emoji, a missing date, and dates spread over more than a year. Newest first with the undated
+//! one last, as the core lists them.
 
 use jiff::civil;
 use jiff::tz::TimeZone;
 use tuit_core::{MessageId, MessageSummary, Timestamp, Untrusted};
 
-/// The moment 09:30 UTC on a calendar date. Panics if the date doesn't exist.
-fn at(year: i16, month: i8, day: i8) -> Timestamp {
-    let moment = TimeZone::UTC
+/// The moment 09:30 on a calendar date in `zone`, so the date shown in that zone is the one
+/// written. Panics if the date doesn't exist.
+fn at(zone: &TimeZone, year: i16, month: i8, day: i8) -> Timestamp {
+    let moment = zone
         .to_timestamp(civil::date(year, month, day).at(9, 30, 0, 0))
         .expect("the sample dates are real");
     Timestamp::from_unix_seconds(moment.as_second())
@@ -19,8 +20,9 @@ fn at(year: i16, month: i8, day: i8) -> Timestamp {
 /// Sender, subject and a (year, month, day) if there is a date.
 type Row = (&'static str, &'static str, Option<(i16, i8, i8)>);
 
-/// About thirty made-up messages, newest first.
-pub fn messages() -> Vec<MessageSummary> {
+/// About thirty made-up messages, newest first, dated for `zone`, the zone the list will show
+/// them in.
+pub fn messages(zone: &TimeZone) -> Vec<MessageSummary> {
     let rows: [Row; 30] = [
         ("Priya Raman", "Lunch on Thursday?", Some((2026, 10, 1))),
         (
@@ -123,7 +125,7 @@ pub fn messages() -> Vec<MessageSummary> {
             id: MessageId::new(format!("sample-{n}")),
             from: Untrusted::new(from),
             subject: Untrusted::new(subject),
-            date: date.map(|(y, m, d)| at(y, m, d)),
+            date: date.map(|(y, m, d)| at(zone, y, m, d)),
         })
         .collect()
 }
@@ -134,21 +136,25 @@ mod tests {
 
     #[test]
     fn dates_come_out_as_written() {
-        let date = |moment: Timestamp| {
-            let moment = jiff::Timestamp::from_second(moment.unix_seconds()).unwrap();
-            moment.to_zoned(TimeZone::UTC)
-        };
-        assert_eq!(date(at(2026, 10, 2)).date(), civil::date(2026, 10, 2));
-        assert_eq!(date(at(2025, 6, 24)).date(), civil::date(2025, 6, 24));
-        assert_eq!(date(at(2024, 2, 29)).date(), civil::date(2024, 2, 29));
-        assert_eq!(date(at(2026, 1, 1)).date(), civil::date(2026, 1, 1));
-        // 09:30 UTC, so the date is the same a few time zones either way.
-        assert_eq!(date(at(2026, 10, 2)).time(), civil::time(9, 30, 0, 0));
+        // The far west and the far east of the world's zones, and UTC between them.
+        for hours in [-12, 0, 14] {
+            let zone = TimeZone::fixed(jiff::tz::offset(hours));
+            let date = |moment: Timestamp| {
+                let moment = jiff::Timestamp::from_second(moment.unix_seconds()).unwrap();
+                zone.to_datetime(moment)
+            };
+            let at = |year, month, day| date(at(&zone, year, month, day));
+            assert_eq!(at(2026, 10, 2).date(), civil::date(2026, 10, 2), "{hours}");
+            assert_eq!(at(2025, 6, 24).date(), civil::date(2025, 6, 24), "{hours}");
+            assert_eq!(at(2024, 2, 29).date(), civil::date(2024, 2, 29), "{hours}");
+            assert_eq!(at(2026, 1, 1).date(), civil::date(2026, 1, 1), "{hours}");
+            assert_eq!(at(2026, 10, 2).time(), civil::time(9, 30, 0, 0), "{hours}");
+        }
     }
 
     #[test]
     fn the_test_card_covers_what_it_should() {
-        let all = messages();
+        let all = messages(&TimeZone::UTC);
         assert_eq!(all.len(), 30);
         assert!(all.iter().any(|m| m.from.is_empty()));
         assert!(all.iter().any(|m| m.subject.is_empty()));
