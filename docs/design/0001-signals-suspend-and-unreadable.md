@@ -1,4 +1,4 @@
-# 0001: Signals, suspend and dates from the future
+# 0001: Signals, suspend and unreadable messages
 
 **This moves "draw the screen first", agreed on 19 October, out of this design and into the index's design (0002).** The reason is under "Drawing first waits for the index".
 
@@ -8,7 +8,6 @@ Agreed on 19 October, and decided here:
 
 - a kill signal puts the terminal back;
 - Ctrl-Z suspends `tuit` as it does other terminal programs;
-- a message dated more than two days ahead shows no date and sorts last;
 - if some messages can't be read, the rest are shown with a count.
 
 One of these is a fault today: `kill` leaves the shell in raw mode until `reset`. None of them depends on drawing the screen first.
@@ -25,9 +24,7 @@ Drawing first shows the wait for a large folder without shortening it, and it do
 
 **3. Ctrl-Z.** In raw mode Ctrl-Z arrives as a key. `tuit` puts the terminal back, then stops itself. When it's continued, it takes the terminal again and redraws everything.
 
-**4. Dates from the future, decided in one place.** A store reports the date its message gives, unchanged. The core's sorting step is given "now" by the binary, which reads the clock each time it lists the messages. A date more than two days after "now" becomes no date and sorts last. Two days, not one: a sender's clock can be wrong, set to the wrong time zone, and just past a change of day, all at once. The sample, which today skips that step, will be made to go through it. So the rule is written once and applies to every store, and a store's answer doesn't change with the day it's read. The core still reads no clock.
-
-**5. Unreadable messages.** A store's list returns the messages it could read and a count of the files it couldn't. The screen shows the count. One unreadable file no longer fails the whole listing. A store that can't be read at all still fails before the screen opens, as today.
+**4. Unreadable messages.** A store's list returns the messages it could read and a count of the files it couldn't. The screen shows the count. One unreadable file no longer fails the whole listing. A store that can't be read at all still fails before the screen opens, as today.
 
 ## Considered and turned down
 
@@ -35,22 +32,18 @@ Drawing first shows the wait for a large folder without shortening it, and it do
 - **crossterm's async event stream.** It needs an async runtime: more machinery.
 - **Catching SIGINT and SIGQUIT too.** In raw mode they only come from someone typing `kill -INT`. Two fewer cases.
 - **A second signal ending a stuck `tuit` at once.** It would leave the terminal raw, which is the fault being fixed, and a stuck `tuit` is a bug to fix, not a case to handle.
-- **The future-date rule in the Maildir reader.** Every store would have to repeat it, and a listing would change from day to day.
-- **The arrival time in place of a bad `Date:`.** The date column would then mean two things without saying so.
+- **Treating messages dated in the future as suspect.** That's a heuristic, not a rule, and belongs with the heuristics that flag and sort mail, when they're designed. Tabled until then.
 
 ## What it costs
 
 - A signal is noticed up to a quarter of a second late, and the loop wakes a few times a second when idle.
-- A message more than two days ahead, from a sender whose clock is badly wrong, shows no date. That's the trade against spam.
-- "Now" is the moment of listing. Today `tuit` lists once, at start, so a list left open for days judges dates by when it opened. That's harmless, because nothing new arrives in it while it's open. When the list refreshes, as it will with the index, each refresh reads the clock again.
-- The core's sort takes one more input, "now". The store's list returns one more number.
+- The store's list returns one more number.
 - `signal-hook`, already built into `tuit` through crossterm, becomes a named dependency. No new crate.
 
 ## The pull requests it leads to
 
 Each is readable in ten minutes and leaves `main` working.
 
-1. **Dates from the future** (4). The screen's support for years before 0, which no message can have, goes with it.
-2. **The loop and signals** (1, 2). The pseudo-terminal test gains a `kill`.
-3. **Ctrl-Z** (3).
-4. **Unreadable messages** (5). Touches the core's store trait.
+1. **The loop and signals** (1, 2). The pseudo-terminal test gains a `kill`.
+2. **Ctrl-Z** (3).
+3. **Unreadable messages** (4). Touches the core's store trait.
