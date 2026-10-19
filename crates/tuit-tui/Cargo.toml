@@ -13,3 +13,4 @@ tuit-core = { workspace = true }
 jiff = { workspace = true }
 ratatui = { workspace = true }
 unicode-segmentation = { workspace = true }
+signal-hook = { workspace = true }
