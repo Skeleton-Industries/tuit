@@ -86,21 +86,14 @@ pub(crate) fn cells(text: &str) -> usize {
 /// The date of a moment as "2026-10-02", by the calendar of `zone`. The one place a date is
 /// turned into text. It never asks the system for a zone: it is told one.
 ///
-/// `None` for a moment `jiff` can't hold, which is anything before -9999-01-02 01:59:59 or
-/// after 9999-12-30 22:00:00 UTC: a store could hand over any number of seconds. A year before
-/// 0 comes out signed, as "-0001-01-01", a cell longer than any date from the year 0 on, and a
-/// caller with a fixed width has to deal with that.
+/// `None` for a date before the year 0 in `zone`, which no real message has, or after
+/// 9999-12-30 22:00:00 UTC, the last moment `jiff` can hold: a store could hand over any
+/// number of seconds. Every date returned is 10 cells, and the list relies on that.
 pub(crate) fn format_date(moment: Timestamp, zone: &TimeZone) -> Option<String> {
     let moment = jiff::Timestamp::from_second(moment.unix_seconds()).ok()?;
     let date = zone.to_datetime(moment).date();
-    let year = date.year();
-    let sign = if year < 0 { "-" } else { "" };
-    Some(format!(
-        "{sign}{:04}-{:02}-{:02}",
-        year.unsigned_abs(),
-        date.month(),
-        date.day()
-    ))
+    let year = u16::try_from(date.year()).ok()?;
+    Some(format!("{year:04}-{:02}-{:02}", date.month(), date.day()))
 }
 
 #[cfg(test)]
@@ -288,18 +281,22 @@ mod tests {
     }
 
     #[test]
-    fn a_year_before_zero_is_signed_and_a_cell_longer() {
-        let shown = utc(seconds(-1, 1, 1, 12, 0)).unwrap();
-        assert_eq!(shown, "-0001-01-01");
-        assert_eq!(cells(&shown), 11);
+    fn a_year_before_zero_has_no_date() {
+        assert_eq!(utc(seconds(-1, 1, 1, 12, 0)), None);
+        // The first hours of year 0 are still year -1 west of UTC.
+        let start_of_year_0 = seconds(0, 1, 1, 0, 0);
+        assert_eq!(utc(start_of_year_0).as_deref(), Some("0000-01-01"));
+        let minus_five = TimeZone::fixed(tz::offset(-5));
+        assert_eq!(at(start_of_year_0, &minus_five), None);
     }
 
     #[test]
     fn a_moment_jiff_cannot_hold_has_no_date_and_does_not_panic() {
-        // -9999-01-02 01:59:59 UTC and 9999-12-30 22:00:00 UTC.
+        // The first and last moments `jiff` can hold: -9999-01-02 01:59:59 UTC, which is before
+        // the year 0 and so has no date, and 9999-12-30 22:00:00 UTC.
         let first = -377_705_023_201;
         let last = 253_402_207_200;
-        assert_eq!(utc(first).as_deref(), Some("-9999-01-02"));
+        assert_eq!(utc(first), None);
         assert_eq!(utc(last).as_deref(), Some("9999-12-30"));
         assert_eq!(utc(first - 1), None);
         assert_eq!(utc(last + 1), None);
