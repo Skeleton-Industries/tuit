@@ -18,6 +18,8 @@ Run `tuit` on a Maildir, the folder that holds `cur`, `new` and `tmp`. It reads 
 cargo run -p tuit-mail -- path/to/maildir
 ```
 
+Dates show as `yyyy-mm-dd`, the day in your machine's time zone: `TZ` if it is set, otherwise the system's. If tuit can't find or read the zone, a mistyped `TZ` included, it uses UTC.
+
 `tuit --sample` shows a list of made-up messages built into the program instead. `tuit --help` prints how to use it, and so does `tuit` with no argument. A folder whose name starts with `-` is given as `./-name`.
 
 Keys:
