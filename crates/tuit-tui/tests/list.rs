@@ -544,19 +544,57 @@ fn text_of_only_control_characters_shows_replacement_characters() {
 
 #[test]
 fn a_date_too_long_for_its_column_is_left_out() {
-    // The year 9999 fits; the far future doesn't, and isn't shown cut short.
-    let year_9999 = 253_402_214_400;
+    // "30 Dec 9999" fits in 11 cells. "30 Dec -9999" is 12, and isn't shown cut short.
+    let year_9999 = 253_402_207_200;
+    let too_wide = jiff::civil::date(-9999, 12, 30)
+        .to_zoned(jiff::tz::TimeZone::UTC)
+        .unwrap()
+        .timestamp()
+        .as_second();
     let mut list = MessageList::new(vec![
-        message(1, "Ada", "Far future", Some(i64::MAX)),
+        message(1, "Ada", "Too wide", Some(too_wide)),
         message(2, "Ada", "Year 9999", Some(year_9999)),
     ]);
     let rows = lines(&draw(&mut list, 80, 8));
     assert!(
-        rows[1].trim_end_matches('│').trim().ends_with("Far future"),
+        rows[1].trim_end_matches('│').trim().ends_with("Too wide"),
         "{}",
         rows[1]
     );
-    assert!(rows[2].contains("31 Dec 9999"), "{}", rows[2]);
+    assert!(rows[2].contains("30 Dec 9999"), "{}", rows[2]);
+}
+
+#[test]
+fn a_date_the_date_library_cannot_hold_leaves_the_date_column_empty() {
+    // The first and last second it can hold, and the one on either side of each, and the
+    // extremes of `i64`. None of them panics, and only the two inside the limits show a date.
+    let first = -377_705_023_201;
+    let last = 253_402_207_200;
+    let seconds = [
+        i64::MIN,
+        i64::MIN + 1,
+        first - 1,
+        first,
+        last,
+        last + 1,
+        i64::MAX - 1,
+        i64::MAX,
+    ];
+    let messages: Vec<_> = seconds
+        .iter()
+        .enumerate()
+        .map(|(n, &s)| message(n, "Ada", &format!("Subject {n}"), Some(s)))
+        .collect();
+    let mut list = MessageList::new(messages);
+    let rows = lines(&draw(&mut list, 80, 12));
+    for (n, row) in rows[1..=seconds.len()].iter().enumerate() {
+        let shown = row.trim_end_matches('│').trim();
+        match n {
+            3 => assert!(shown.ends_with("2 Jan -9999"), "{n}: {row}"),
+            4 => assert!(shown.ends_with("30 Dec 9999"), "{n}: {row}"),
+            _ => assert!(shown.ends_with(&format!("Subject {n}")), "{n}: {row}"),
+        }
+    }
 }
 
 #[test]
