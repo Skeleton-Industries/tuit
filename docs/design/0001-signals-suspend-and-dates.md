@@ -8,7 +8,7 @@ Agreed on 19 October, and decided here:
 
 - a kill signal puts the terminal back;
 - Ctrl-Z suspends `tuit` as it does other terminal programs;
-- a message dated more than a day ahead shows no date and sorts last;
+- a message dated more than two days ahead shows no date and sorts last;
 - if some messages can't be read, the rest are shown with a count.
 
 One of these is a fault today: `kill` leaves the shell in raw mode until `reset`. None of them depends on drawing the screen first.
@@ -25,7 +25,7 @@ Drawing first shows the wait for a large folder without shortening it, and it do
 
 **3. Ctrl-Z.** In raw mode Ctrl-Z arrives as a key. `tuit` puts the terminal back, then stops itself. When it's continued, it takes the terminal again and redraws everything.
 
-**4. Dates from the future, decided in one place.** A store reports the date its message gives, unchanged. The core's sorting step is given "now" by the binary, which reads the clock once. A date more than a day after "now" becomes no date and sorts last. The sample, which today skips that step, will be made to go through it. So the rule is written once and applies to every store, and a store's answer doesn't change with the day it's read. The core still reads no clock.
+**4. Dates from the future, decided in one place.** A store reports the date its message gives, unchanged. The core's sorting step is given "now" by the binary, which reads the clock each time it lists the messages. A date more than two days after "now" becomes no date and sorts last. Two days, not one: a sender's clock can be wrong, set to the wrong time zone, and just past a change of day, all at once. The sample, which today skips that step, will be made to go through it. So the rule is written once and applies to every store, and a store's answer doesn't change with the day it's read. The core still reads no clock.
 
 **5. Unreadable messages.** A store's list returns the messages it could read and a count of the files it couldn't. The screen shows the count. One unreadable file no longer fails the whole listing. A store that can't be read at all still fails before the screen opens, as today.
 
@@ -41,7 +41,8 @@ Drawing first shows the wait for a large folder without shortening it, and it do
 ## What it costs
 
 - A signal is noticed up to a quarter of a second late, and the loop wakes a few times a second when idle.
-- A message more than a day ahead, from a sender whose clock is badly wrong, shows no date. That's the trade against spam.
+- A message more than two days ahead, from a sender whose clock is badly wrong, shows no date. That's the trade against spam.
+- "Now" is the moment of listing. Today `tuit` lists once, at start, so a list left open for days judges dates by when it opened. That's harmless, because nothing new arrives in it while it's open. When the list refreshes, as it will with the index, each refresh reads the clock again.
 - The core's sort takes one more input, "now". The store's list returns one more number.
 - `signal-hook`, already built into `tuit` through crossterm, becomes a named dependency. No new crate.
 
