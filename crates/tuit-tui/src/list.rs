@@ -22,7 +22,8 @@ pub const MIN_HEIGHT: u16 = 5;
 const PADDING: usize = 1;
 /// Space between columns.
 const GAP: usize = 2;
-/// "30 Sep 2026", the longest date a year of four digits makes.
+/// "30 Sep 2026", the longest date a year from 1000 to 9999 makes. A longer one, such as
+/// "30 Dec -9999", is left out.
 const DATE_WIDTH: usize = 11;
 /// The sender column's usual width.
 const SENDER_WIDTH: usize = 22;
@@ -241,8 +242,9 @@ fn render_row(
     let subject_x = x + (columns.sender + GAP) as u16;
     field(subject_x, columns.subject, &message.subject, NO_SUBJECT);
 
-    // A date too long for its column is left out: cut short, its year would read as another.
-    let date = message.date.map(|date| format_date(date.utc_date()));
+    // A date too long for its column, or one that can't be worked out, is left out: cut short,
+    // its year would read as another.
+    let date = message.date.and_then(format_date);
     if let (true, Some(date)) = (columns.date, date)
         && cells(&date) <= DATE_WIDTH
     {

@@ -63,7 +63,7 @@ Crates for the first slice:
 | --- | --- | --- |
 | `tuit-core` | Messages, and the traits the edges implement | No other crate of ours. Nothing that does I/O |
 | `tuit-maildir` | Reads a Maildir folder | `tuit-core` |
-| `tuit-tui` | Draws screens and handles keys. Owns the rule that makes text safe for a line of a terminal | `tuit-core` |
+| `tuit-tui` | Draws screens and handles keys. Owns the rule that makes text safe for a line of a terminal, and turns a message's date, which the core holds as a count of seconds, into the calendar date it shows | `tuit-core` |
 | `tuit-mail` | The `tuit` command: the plain commands, and wiring the others together | All of the above |
 
 The first slice runs on made-up mail in test folders. Real mail arrives with the IMAP fetch, which is the slice after.

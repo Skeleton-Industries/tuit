@@ -1,7 +1,8 @@
 //! Making mail text safe and the right width for a terminal.
 
+use jiff::tz::TimeZone;
 use ratatui::buffer::CellWidth;
-use tuit_core::Untrusted;
+use tuit_core::{Timestamp, Untrusted};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::safe::TerminalLinePrefix;
@@ -82,22 +83,24 @@ pub(crate) fn cells(text: &str) -> usize {
         .sum()
 }
 
-/// A short month name for 1 to 12.
-fn month_name(month: u32) -> &'static str {
-    const NAMES: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    NAMES[(month as usize).saturating_sub(1).min(11)]
-}
-
-/// A date as "2 Oct 2026".
-pub(crate) fn format_date((year, month, day): (i64, u32, u32)) -> String {
-    format!("{day} {} {year}", month_name(month))
+/// The date of a moment as "2 Oct 2026", the day in UTC. `None` for a moment `jiff` can't
+/// hold, which is anything before -9999-01-02 01:59:59 or after 9999-12-30 22:00:00 UTC: a
+/// store could hand over any number of seconds.
+pub(crate) fn format_date(moment: Timestamp) -> Option<String> {
+    let moment = jiff::Timestamp::from_second(moment.unix_seconds()).ok()?;
+    let date = moment.to_zoned(TimeZone::UTC).date();
+    Some(format!(
+        "{} {} {}",
+        date.day(),
+        date.strftime("%b"),
+        date.year()
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jiff::civil;
 
     fn sanitize_and_fit(text: &str, width: usize) -> String {
         super::sanitize_and_fit(&Untrusted::new(text), width)
@@ -240,9 +243,40 @@ mod tests {
         let names = [
             "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
         ];
+        let at = |month, day| {
+            let moment = civil::date(2026, month, day).at(9, 30, 0, 0);
+            let seconds = TimeZone::UTC.to_timestamp(moment).unwrap().as_second();
+            format_date(Timestamp::from_unix_seconds(seconds))
+        };
         for (month, name) in (1..).zip(names) {
-            assert_eq!(format_date((2026, month, 2)), format!("2 {name} 2026"));
+            assert_eq!(at(month, 2), Some(format!("2 {name} 2026")));
         }
-        assert_eq!(format_date((2026, 1, 31)), "31 Jan 2026");
+        assert_eq!(at(1, 31), Some("31 Jan 2026".to_string()));
+    }
+
+    #[test]
+    fn the_day_is_the_day_in_utc() {
+        // 1790812800 is 2026-10-01 00:00:00 UTC.
+        let at = |seconds| format_date(Timestamp::from_unix_seconds(seconds));
+        assert_eq!(at(1_790_812_800), Some("1 Oct 2026".to_string()));
+        assert_eq!(at(1_790_812_799), Some("30 Sep 2026".to_string()));
+        assert_eq!(at(0), Some("1 Jan 1970".to_string()));
+        assert_eq!(at(-1), Some("31 Dec 1969".to_string()));
+    }
+
+    #[test]
+    fn a_moment_jiff_cannot_hold_has_no_date_and_does_not_panic() {
+        // -9999-01-02 01:59:59 UTC and 9999-12-30 22:00:00 UTC.
+        let first = -377_705_023_201;
+        let last = 253_402_207_200;
+        let at = |seconds| format_date(Timestamp::from_unix_seconds(seconds));
+        assert_eq!(at(first), Some("2 Jan -9999".to_string()));
+        assert_eq!(at(last), Some("30 Dec 9999".to_string()));
+        assert_eq!(at(first - 1), None);
+        assert_eq!(at(last + 1), None);
+        assert_eq!(at(i64::MIN), None);
+        assert_eq!(at(i64::MAX), None);
+        assert_eq!(at(i64::MIN + 1), None);
+        assert_eq!(at(i64::MAX - 1), None);
     }
 }
