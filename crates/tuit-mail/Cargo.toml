@@ -23,3 +23,7 @@ tuit-tui = { workspace = true }
 
 [dev-dependencies]
 ratatui = { workspace = true }
+
+# For tests/terminal.rs: a pseudo-terminal to run the real binary in, without `unsafe`.
+[target.'cfg(unix)'.dev-dependencies]
+rustix = { workspace = true, features = ["std", "pty", "termios", "event"] }

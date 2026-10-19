@@ -784,6 +784,7 @@ name = "tuit-mail"
 version = "0.1.0"
 dependencies = [
  "ratatui",
+ "rustix",
  "tuit-core",
  "tuit-maildir",
  "tuit-tui",
