@@ -4,23 +4,20 @@
 //! date, and dates spread over more than a year. Newest first with the undated one last, as the
 //! core lists them.
 
+use jiff::civil;
+use jiff::tz::TimeZone;
 use tuit_core::{MessageId, MessageSummary, Timestamp, Untrusted};
 
-/// Seconds since the epoch at 09:30 UTC on a calendar date.
-fn at(year: i64, month: i64, day: i64) -> i64 {
-    // Howard Hinnant's "days from civil", the inverse of `Timestamp::utc_date`.
-    let y = if month <= 2 { year - 1 } else { year };
-    let era = y.div_euclid(400);
-    let year_of_era = y.rem_euclid(400);
-    let month_from_march = (month + 9) % 12;
-    let day_of_year = (153 * month_from_march + 2) / 5 + day - 1;
-    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
-    let days = era * 146_097 + day_of_era - 719_468;
-    days * 86_400 + 9 * 3_600 + 30 * 60
+/// The moment 09:30 UTC on a calendar date. Panics if the date doesn't exist.
+fn at(year: i16, month: i8, day: i8) -> Timestamp {
+    let moment = TimeZone::UTC
+        .to_timestamp(civil::date(year, month, day).at(9, 30, 0, 0))
+        .expect("the sample dates are real");
+    Timestamp::from_unix_seconds(moment.as_second())
 }
 
 /// Sender, subject and a (year, month, day) if there is a date.
-type Row = (&'static str, &'static str, Option<(i64, i64, i64)>);
+type Row = (&'static str, &'static str, Option<(i16, i8, i8)>);
 
 /// About thirty made-up messages, newest first.
 pub fn messages() -> Vec<MessageSummary> {
@@ -126,7 +123,7 @@ pub fn messages() -> Vec<MessageSummary> {
             id: MessageId::new(format!("sample-{n}")),
             from: Untrusted::new(from),
             subject: Untrusted::new(subject),
-            date: date.map(|(y, m, d)| Timestamp::from_unix_seconds(at(y, m, d))),
+            date: date.map(|(y, m, d)| at(y, m, d)),
         })
         .collect()
 }
@@ -137,13 +134,16 @@ mod tests {
 
     #[test]
     fn dates_come_out_as_written() {
-        let date = |s| Timestamp::from_unix_seconds(s).utc_date();
-        assert_eq!(date(at(2026, 10, 2)), (2026, 10, 2));
-        assert_eq!(date(at(2025, 6, 24)), (2025, 6, 24));
-        assert_eq!(date(at(2024, 2, 29)), (2024, 2, 29));
-        assert_eq!(date(at(2026, 1, 1)), (2026, 1, 1));
+        let date = |moment: Timestamp| {
+            let moment = jiff::Timestamp::from_second(moment.unix_seconds()).unwrap();
+            moment.to_zoned(TimeZone::UTC)
+        };
+        assert_eq!(date(at(2026, 10, 2)).date(), civil::date(2026, 10, 2));
+        assert_eq!(date(at(2025, 6, 24)).date(), civil::date(2025, 6, 24));
+        assert_eq!(date(at(2024, 2, 29)).date(), civil::date(2024, 2, 29));
+        assert_eq!(date(at(2026, 1, 1)).date(), civil::date(2026, 1, 1));
         // 09:30 UTC, so the date is the same a few time zones either way.
-        assert_eq!(at(2026, 10, 2).rem_euclid(86_400), 9 * 3_600 + 30 * 60);
+        assert_eq!(date(at(2026, 10, 2)).time(), civil::time(9, 30, 0, 0));
     }
 
     #[test]

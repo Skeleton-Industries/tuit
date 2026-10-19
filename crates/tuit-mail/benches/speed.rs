@@ -20,6 +20,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
+use jiff::tz::TimeZone;
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
@@ -114,20 +115,11 @@ fn made_up_message(n: usize) -> String {
 
 /// A date header value for the given seconds, in a fixed UTC form.
 fn rfc2822(seconds: usize) -> String {
-    const DAY_NAMES: [&str; 7] = ["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"];
-    const MONTH_NAMES: [&str; 12] = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    let (year, month, day) = tuit_core::Timestamp::from_unix_seconds(seconds as i64).utc_date();
-    let day_of_week = DAY_NAMES[(seconds / 86_400) % 7];
-    let time = seconds % 86_400;
-    format!(
-        "{day_of_week}, {day} {} {year} {:02}:{:02}:{:02} +0000",
-        MONTH_NAMES[month as usize - 1],
-        time / 3_600,
-        time % 3_600 / 60,
-        time % 60,
-    )
+    jiff::Timestamp::from_second(seconds as i64)
+        .expect("the bench dates are in range")
+        .to_zoned(TimeZone::UTC)
+        .strftime("%a, %-d %b %Y %H:%M:%S +0000")
+        .to_string()
 }
 
 /// Times listing a Maildir of 10,000 made-up messages. Building the folder is
