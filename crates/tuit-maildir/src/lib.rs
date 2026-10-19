@@ -5,8 +5,9 @@
 use std::fs::{self, DirEntry, File};
 use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
-use mail_parser::MessageParser;
+use mail_parser::{HeaderName, MessageParser};
 use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp, Untrusted};
 
 /// How much of a file is read, at most, when looking for the end of its headers.
@@ -14,6 +15,18 @@ use tuit_core::{MailStore, MessageId, MessageSummary, StoreError, Timestamp, Unt
 /// far smaller, and a file with no blank line would otherwise be read to its
 /// end.
 const MAX_HEADER_BYTES: u64 = 1024 * 1024;
+
+/// The parser, built once and shared. It decodes only the three headers a
+/// summary is made from, and passes over the rest without decoding them. A
+/// summary that reads a fourth header needs it added here too, or it comes back
+/// empty.
+static PARSER: LazyLock<MessageParser> = LazyLock::new(|| {
+    MessageParser::new()
+        .header_date(HeaderName::Date)
+        .header_text(HeaderName::Subject)
+        .header_address(HeaderName::From)
+        .default_header_ignore()
+});
 
 /// One Maildir folder on disk.
 #[derive(Debug, Clone)]
@@ -173,7 +186,7 @@ fn summarise(id: MessageId, headers: &[u8]) -> MessageSummary {
         subject: Untrusted::default(),
         date: None,
     };
-    let Some(message) = MessageParser::default().parse_headers(headers) else {
+    let Some(message) = PARSER.parse_headers(headers) else {
         return summary;
     };
     if let Some(sender) = message.from().and_then(|from| from.first()) {
