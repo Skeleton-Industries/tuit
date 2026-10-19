@@ -23,7 +23,7 @@ pub const MIN_HEIGHT: u16 = 5;
 const PADDING: usize = 1;
 /// Space between columns.
 const GAP: usize = 2;
-/// "2026-10-08", which is as long as every date with a year from 0000 to 9999.
+/// "2026-10-08", which is as long as every date `format_date` gives.
 const DATE_WIDTH: usize = 10;
 /// The sender column's usual width.
 const SENDER_WIDTH: usize = 22;
@@ -248,15 +248,12 @@ fn render_row(
     let subject_x = x + (columns.sender + GAP) as u16;
     field(subject_x, columns.subject, &message.subject, NO_SUBJECT);
 
-    // A date too long for its column, or one that can't be worked out, is left out: cut short,
-    // its year would read as another.
+    // A date that can't be worked out is left out.
     let date = message.date.and_then(|date| format_date(date, time_zone));
-    if let (true, Some(date)) = (columns.date, date)
-        && cells(&date) <= DATE_WIDTH
-    {
-        let date_x = inner.right() - PADDING as u16 - cells(&date) as u16;
+    if let (true, Some(date)) = (columns.date, date) {
+        let date_x = inner.right() - PADDING as u16 - DATE_WIDTH as u16;
         let date_style = if selected { Style::new() } else { style::DATE };
-        buf.set_stringn(date_x, y, &date, DATE_WIDTH, date_style);
+        buf.set_string(date_x, y, &date, date_style);
     }
 }
 
