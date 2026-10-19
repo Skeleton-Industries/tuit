@@ -1,5 +1,7 @@
 # 0001: Signals, suspend and unreadable messages
 
+Decision 2 is replaced in part by 0003: SIGHUP is left to its default.
+
 **This moves "draw the screen first", agreed on 19 October, out of this design and into the index's design (0002).** The reason is under "Drawing first waits for the index".
 
 ## What's being decided, and why now
