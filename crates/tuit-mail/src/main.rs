@@ -4,6 +4,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use jiff::tz::TimeZone;
 use tuit_core::{MessageSummary, StoreError, Untrusted, list_newest_first};
 use tuit_maildir::Maildir;
 
@@ -91,11 +92,13 @@ fn main() -> ExitCode {
         }
         Err(message) => return fail(&Untrusted::new(message)),
     };
+    // Dates are shown in UTC for now.
+    let time_zone = TimeZone::UTC;
     // The mail is read before the screen opens, so an error prints to a normal terminal.
     let shown = load(source)
         .map_err(StoreError::into_message)
         .and_then(|messages| {
-            tuit_tui::run(messages).map_err(|error| Untrusted::new(error.to_string()))
+            tuit_tui::run(messages, time_zone).map_err(|error| Untrusted::new(error.to_string()))
         });
     match shown {
         Ok(()) => ExitCode::SUCCESS,

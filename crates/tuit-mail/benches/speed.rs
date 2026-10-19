@@ -168,7 +168,7 @@ fn redraw() -> Vec<Duration> {
             )),
         })
         .collect();
-    let mut list = MessageList::new(messages);
+    let mut list = MessageList::new(messages, TimeZone::UTC);
     let mut terminal =
         Terminal::new(TestBackend::new(REDRAW_SCREEN.0, REDRAW_SCREEN.1)).expect("no backend");
     terminal

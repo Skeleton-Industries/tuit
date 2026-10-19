@@ -17,6 +17,7 @@ mod text;
 
 use std::io::{self, IsTerminal};
 
+use jiff::tz::TimeZone;
 use ratatui::DefaultTerminal;
 use ratatui::crossterm::event;
 use tuit_core::MessageSummary;
@@ -24,18 +25,18 @@ use tuit_core::MessageSummary;
 pub use list::{MIN_HEIGHT, MIN_WIDTH, MessageList, Update};
 pub use safe::TerminalLine;
 
-/// Takes over the terminal, shows `messages` in a list, and returns when the user quits. The
-/// terminal is put back as it was, including if the program panics. It is not put back if the
-/// program is killed by a signal.
+/// Takes over the terminal, shows `messages` in a list with their dates in `time_zone`, and
+/// returns when the user quits. The terminal is put back as it was, including if the program
+/// panics. It is not put back if the program is killed by a signal.
 ///
 /// Fails without touching the terminal if standard input or output is not a terminal.
-pub fn run(messages: Vec<MessageSummary>) -> io::Result<()> {
+pub fn run(messages: Vec<MessageSummary>, time_zone: TimeZone) -> io::Result<()> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         return Err(io::Error::other("needs a terminal to draw on"));
     }
     // Starting up is several steps. If a later one fails, undo the earlier ones.
     let mut terminal = ratatui::try_init().inspect_err(|_| ratatui::restore())?;
-    let result = event_loop(&mut terminal, MessageList::new(messages));
+    let result = event_loop(&mut terminal, MessageList::new(messages, time_zone));
     ratatui::restore();
     result
 }
