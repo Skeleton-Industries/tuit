@@ -83,24 +83,30 @@ pub(crate) fn cells(text: &str) -> usize {
         .sum()
 }
 
-/// The date of a moment as "2 Oct 2026", the day in UTC. `None` for a moment `jiff` can't
-/// hold, which is anything before -9999-01-02 01:59:59 or after 9999-12-30 22:00:00 UTC: a
-/// store could hand over any number of seconds.
-pub(crate) fn format_date(moment: Timestamp) -> Option<String> {
+/// The date of a moment as "2026-10-02", by the calendar of `zone`. The one place a date is
+/// turned into text. It never asks the system for a zone: it is told one.
+///
+/// `None` for a moment `jiff` can't hold, which is anything before -9999-01-02 01:59:59 or
+/// after 9999-12-30 22:00:00 UTC: a store could hand over any number of seconds. A year before
+/// 0 comes out signed, as "-0001-01-01", a cell longer than any date from the year 0 on, and a
+/// caller with a fixed width has to deal with that.
+pub(crate) fn format_date(moment: Timestamp, zone: &TimeZone) -> Option<String> {
     let moment = jiff::Timestamp::from_second(moment.unix_seconds()).ok()?;
-    let date = moment.to_zoned(TimeZone::UTC).date();
+    let date = zone.to_datetime(moment).date();
+    let year = date.year();
+    let sign = if year < 0 { "-" } else { "" };
     Some(format!(
-        "{} {} {}",
-        date.day(),
-        date.strftime("%b"),
-        date.year()
+        "{sign}{:04}-{:02}-{:02}",
+        year.unsigned_abs(),
+        date.month(),
+        date.day()
     ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jiff::civil;
+    use jiff::{civil, tz};
 
     fn sanitize_and_fit(text: &str, width: usize) -> String {
         super::sanitize_and_fit(&Untrusted::new(text), width)
@@ -238,30 +244,54 @@ mod tests {
         );
     }
 
-    #[test]
-    fn dates_are_day_month_year() {
-        let names = [
-            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-        ];
-        let at = |month, day| {
-            let moment = civil::date(2026, month, day).at(9, 30, 0, 0);
-            let seconds = TimeZone::UTC.to_timestamp(moment).unwrap().as_second();
-            format_date(Timestamp::from_unix_seconds(seconds))
-        };
-        for (month, name) in (1..).zip(names) {
-            assert_eq!(at(month, 2), Some(format!("2 {name} 2026")));
-        }
-        assert_eq!(at(1, 31), Some("31 Jan 2026".to_string()));
+    fn at(seconds: i64, zone: &TimeZone) -> Option<String> {
+        format_date(Timestamp::from_unix_seconds(seconds), zone)
+    }
+
+    fn utc(seconds: i64) -> Option<String> {
+        at(seconds, &TimeZone::UTC)
+    }
+
+    /// Seconds for a date and time in UTC.
+    fn seconds(year: i16, month: i8, day: i8, hour: i8, minute: i8) -> i64 {
+        let moment = civil::date(year, month, day).at(hour, minute, 0, 0);
+        TimeZone::UTC.to_timestamp(moment).unwrap().as_second()
     }
 
     #[test]
-    fn the_day_is_the_day_in_utc() {
-        // 1790812800 is 2026-10-01 00:00:00 UTC.
-        let at = |seconds| format_date(Timestamp::from_unix_seconds(seconds));
-        assert_eq!(at(1_790_812_800), Some("1 Oct 2026".to_string()));
-        assert_eq!(at(1_790_812_799), Some("30 Sep 2026".to_string()));
-        assert_eq!(at(0), Some("1 Jan 1970".to_string()));
-        assert_eq!(at(-1), Some("31 Dec 1969".to_string()));
+    fn dates_are_year_month_day_with_every_part_padded() {
+        let shown = |year, month, day| utc(seconds(year, month, day, 9, 30));
+        assert_eq!(shown(2026, 10, 2).as_deref(), Some("2026-10-02"));
+        assert_eq!(shown(2026, 1, 31).as_deref(), Some("2026-01-31"));
+        assert_eq!(shown(2024, 2, 29).as_deref(), Some("2024-02-29"));
+        assert_eq!(shown(987, 3, 4).as_deref(), Some("0987-03-04"));
+        assert_eq!(shown(0, 1, 1).as_deref(), Some("0000-01-01"));
+        assert_eq!(shown(9999, 12, 30).as_deref(), Some("9999-12-30"));
+    }
+
+    #[test]
+    fn the_day_changes_at_midnight_in_the_zone_given() {
+        assert_eq!(utc(0).as_deref(), Some("1970-01-01"));
+        assert_eq!(utc(-1).as_deref(), Some("1969-12-31"));
+        let plus_two = TimeZone::fixed(tz::offset(2));
+        let minus_five = TimeZone::fixed(tz::offset(-5));
+        // 23:30 UTC is already the next day two hours east of Greenwich.
+        let late = seconds(2026, 10, 2, 23, 30);
+        assert_eq!(at(late, &TimeZone::UTC).as_deref(), Some("2026-10-02"));
+        assert_eq!(at(late, &plus_two).as_deref(), Some("2026-10-03"));
+        assert_eq!(at(late, &minus_five).as_deref(), Some("2026-10-02"));
+        // 00:30 UTC is still the day before five hours west of it.
+        let early = seconds(2026, 10, 2, 0, 30);
+        assert_eq!(at(early, &TimeZone::UTC).as_deref(), Some("2026-10-02"));
+        assert_eq!(at(early, &minus_five).as_deref(), Some("2026-10-01"));
+        assert_eq!(at(early, &plus_two).as_deref(), Some("2026-10-02"));
+    }
+
+    #[test]
+    fn a_year_before_zero_is_signed_and_a_cell_longer() {
+        let shown = utc(seconds(-1, 1, 1, 12, 0)).unwrap();
+        assert_eq!(shown, "-0001-01-01");
+        assert_eq!(cells(&shown), 11);
     }
 
     #[test]
@@ -269,14 +299,13 @@ mod tests {
         // -9999-01-02 01:59:59 UTC and 9999-12-30 22:00:00 UTC.
         let first = -377_705_023_201;
         let last = 253_402_207_200;
-        let at = |seconds| format_date(Timestamp::from_unix_seconds(seconds));
-        assert_eq!(at(first), Some("2 Jan -9999".to_string()));
-        assert_eq!(at(last), Some("30 Dec 9999".to_string()));
-        assert_eq!(at(first - 1), None);
-        assert_eq!(at(last + 1), None);
-        assert_eq!(at(i64::MIN), None);
-        assert_eq!(at(i64::MAX), None);
-        assert_eq!(at(i64::MIN + 1), None);
-        assert_eq!(at(i64::MAX - 1), None);
+        assert_eq!(utc(first).as_deref(), Some("-9999-01-02"));
+        assert_eq!(utc(last).as_deref(), Some("9999-12-30"));
+        assert_eq!(utc(first - 1), None);
+        assert_eq!(utc(last + 1), None);
+        for extreme in [i64::MIN, i64::MIN + 1, i64::MAX - 1, i64::MAX] {
+            assert_eq!(utc(extreme), None);
+            assert_eq!(at(extreme, &TimeZone::fixed(tz::offset(14))), None);
+        }
     }
 }

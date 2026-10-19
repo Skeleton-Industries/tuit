@@ -1,5 +1,6 @@
 //! The message list, driven with key events and drawn into ratatui's in-memory backend.
 
+use jiff::tz::{self, TimeZone};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::buffer::Buffer;
@@ -18,6 +19,11 @@ fn message(n: usize, from: &str, subject: &str, date: Option<i64>) -> MessageSum
         subject: Untrusted::new(subject),
         date: date.map(Timestamp::from_unix_seconds),
     }
+}
+
+/// A list that shows dates by UTC's calendar, so the tests do not depend on the machine's zone.
+fn new_list(messages: Vec<MessageSummary>) -> MessageList {
+    MessageList::new(messages, TimeZone::UTC)
 }
 
 fn numbered(count: usize) -> Vec<MessageSummary> {
@@ -81,7 +87,7 @@ fn selected_row(buffer: &Buffer) -> Option<u16> {
 
 #[test]
 fn shows_three_columns_in_a_frame() {
-    let mut list = MessageList::new(vec![
+    let mut list = new_list(vec![
         message(1, "Ada Example", "Welcome aboard", Some(OCT_2_2026)),
         message(2, "Bo Sample", "Second one", Some(OCT_2_2026 - 86_400 * 40)),
     ]);
@@ -91,8 +97,8 @@ fn shows_three_columns_in_a_frame() {
     assert_eq!(rows[1].chars().count(), 80);
     assert!(rows[1].starts_with("│ Ada Example "));
     assert!(rows[1].contains("  Welcome aboard "));
-    assert!(rows[1].ends_with("  2 Oct 2026 │"), "{}", rows[1]);
-    assert!(rows[2].ends_with("  23 Aug 2026 │"), "{}", rows[2]);
+    assert!(rows[1].ends_with("  2026-10-02 │"), "{}", rows[1]);
+    assert!(rows[2].ends_with("  2026-08-23 │"), "{}", rows[2]);
     assert!(rows[8].starts_with("╰"));
     assert!(rows[9].contains("q quit"));
     // The dates share a right edge and the subjects a left edge.
@@ -101,7 +107,7 @@ fn shows_three_columns_in_a_frame() {
 
 #[test]
 fn the_selected_row_is_a_band_across_the_whole_width() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::Down, KeyCode::Down]);
     let terminal = draw(&mut list, 80, 12);
     let buffer = terminal.backend().buffer();
@@ -113,7 +119,7 @@ fn the_selected_row_is_a_band_across_the_whole_width() {
 
 #[test]
 fn missing_things_show_quiet_placeholders() {
-    let mut list = MessageList::new(vec![
+    let mut list = new_list(vec![
         message(1, "Real Sender", "Real subject", None),
         message(2, "", "", None),
     ]);
@@ -141,7 +147,7 @@ fn missing_things_show_quiet_placeholders() {
 
 #[test]
 fn a_message_with_no_date_leaves_the_date_column_empty() {
-    let mut list = MessageList::new(vec![message(1, "Ada", "No date here", None)]);
+    let mut list = new_list(vec![message(1, "Ada", "No date here", None)]);
     let rows = lines(&draw(&mut list, 80, 8));
     assert!(
         rows[1]
@@ -153,7 +159,7 @@ fn a_message_with_no_date_leaves_the_date_column_empty() {
 
 #[test]
 fn selection_moves_and_stops_at_both_ends() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     draw(&mut list, 80, 12);
     assert_eq!(list.selected(), Some(0));
     press(&mut list, &[KeyCode::Up, KeyCode::Char('k')]);
@@ -179,7 +185,7 @@ fn selection_moves_and_stops_at_both_ends() {
 
 #[test]
 fn scrolling_keeps_the_selection_in_view() {
-    let mut list = MessageList::new(numbered(30));
+    let mut list = new_list(numbered(30));
     // 10 high: 1 hint row and 2 frame rows leave 7 list rows.
     let mut terminal = draw(&mut list, 80, 10);
     for _ in 0..20 {
@@ -204,7 +210,7 @@ fn row_of(terminal: &Terminal<TestBackend>, needle: &str) -> usize {
 
 #[test]
 fn a_page_moves_by_a_screenful() {
-    let mut list = MessageList::new(numbered(30));
+    let mut list = new_list(numbered(30));
     draw(&mut list, 80, 10);
     press(&mut list, &[KeyCode::PageDown]);
     assert_eq!(list.selected(), Some(7));
@@ -221,7 +227,7 @@ fn a_page_moves_by_a_screenful() {
 
 #[test]
 fn a_resize_keeps_the_selection_in_view() {
-    let mut list = MessageList::new(numbered(30));
+    let mut list = new_list(numbered(30));
     draw(&mut list, 80, 24);
     press(&mut list, &[KeyCode::Char('G')]);
     let mut terminal = draw(&mut list, 80, 24);
@@ -243,7 +249,7 @@ fn a_resize_keeps_the_selection_in_view() {
 
 #[test]
 fn wide_text_is_cut_by_width_and_never_spills() {
-    let mut list = MessageList::new(vec![
+    let mut list = new_list(vec![
         message(
             1,
             "田中花子田中花子田中花子田中花子",
@@ -260,7 +266,7 @@ fn wide_text_is_cut_by_width_and_never_spills() {
     let rows = lines(&draw(&mut list, 80, 8));
     for (y, row) in rows.iter().enumerate().take(3).skip(1) {
         assert!(row.contains('…'), "row {y}: {row}");
-        assert!(row.ends_with("2 Oct 2026 │"), "row {y}: {row}");
+        assert!(row.ends_with("2026-10-02 │"), "row {y}: {row}");
     }
     // Every row is exactly as wide as the screen, so nothing spilled or shifted.
     let terminal = draw(&mut list, 80, 8);
@@ -273,7 +279,7 @@ fn wide_text_is_cut_by_width_and_never_spills() {
 
 #[test]
 fn an_empty_list_says_so() {
-    let mut list = MessageList::new(Vec::new());
+    let mut list = new_list(Vec::new());
     assert_eq!(list.selected(), None);
     let rows = lines(&draw(&mut list, 60, 11));
     assert!(rows[0].starts_with("╭ Inbox"));
@@ -296,7 +302,7 @@ fn an_empty_list_says_so() {
 
 #[test]
 fn a_terminal_that_is_too_small_gets_a_message_and_not_a_broken_layout() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     for (w, h) in [(29, 24), (80, 4), (10, 3), (1, 1)] {
         let rows = lines(&draw(&mut list, w, h));
         assert!(!rows.iter().any(|r| r.contains('╭')), "{w}x{h}");
@@ -308,7 +314,7 @@ fn a_terminal_that_is_too_small_gets_a_message_and_not_a_broken_layout() {
 
 #[test]
 fn the_smallest_supported_terminal_still_draws_a_list() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     let rows = lines(&draw(&mut list, 30, 5));
     assert!(rows[0].starts_with("╭ Inbox"));
     assert!(rows[1].contains("Sender 1"));
@@ -317,17 +323,17 @@ fn the_smallest_supported_terminal_still_draws_a_list() {
 
 #[test]
 fn narrow_terminals_drop_the_date_before_the_sender_shrinks() {
-    let mut list = MessageList::new(vec![message(
+    let mut list = new_list(vec![message(
         1,
         "A rather long sender name here",
         "A subject that is quite long indeed",
         Some(OCT_2_2026),
     )]);
-    let wide = lines(&draw(&mut list, 61, 6));
-    assert!(wide[1].contains("2 Oct 2026"));
+    let wide = lines(&draw(&mut list, 60, 6));
+    assert!(wide[1].contains("2026-10-02"));
     assert!(wide[1].contains("A rather long sender …"), "{}", wide[1]);
-    let narrower = lines(&draw(&mut list, 60, 6));
-    assert!(!narrower[1].contains("Oct"));
+    let narrower = lines(&draw(&mut list, 59, 6));
+    assert!(!narrower[1].contains("2026-"));
     assert!(
         narrower[1].contains("A rather long sender …"),
         "{}",
@@ -343,7 +349,7 @@ fn narrow_terminals_drop_the_date_before_the_sender_shrinks() {
 
 #[test]
 fn quitting() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     assert_eq!(list.handle_event(&key(KeyCode::Char('q'))), Update::Quit);
     let ctrl_c = Event::Key(KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL));
     assert_eq!(list.handle_event(&ctrl_c), Update::Quit);
@@ -355,7 +361,7 @@ fn quitting() {
 
 #[test]
 fn key_releases_do_nothing() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     let mut release = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
     release.kind = KeyEventKind::Release;
     assert_eq!(list.handle_event(&Event::Key(release)), Update::Ignored);
@@ -364,7 +370,7 @@ fn key_releases_do_nothing() {
 
 #[test]
 fn mail_text_cannot_send_control_characters_to_the_terminal() {
-    let mut list = MessageList::new(vec![
+    let mut list = new_list(vec![
         message(
             1,
             "Eve\x1b[2J\x1b]0;owned\x07 \u{9b}31m",
@@ -403,7 +409,7 @@ fn with_modifiers(code: KeyCode, modifiers: KeyModifiers) -> Event {
 
 #[test]
 fn each_movement_key_stops_at_its_end() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     draw(&mut list, 80, 12);
     let downward = [
         KeyCode::Down,
@@ -432,7 +438,7 @@ fn each_movement_key_stops_at_its_end() {
 
 #[test]
 fn the_arrows_and_j_and_k_move_one_row() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     for (code, expected) in [
         (KeyCode::Down, 1),
         (KeyCode::Char('j'), 2),
@@ -446,26 +452,26 @@ fn the_arrows_and_j_and_k_move_one_row() {
 
 #[test]
 fn a_key_that_moves_nothing_asks_for_no_redraw() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     assert_eq!(list.handle_event(&key(KeyCode::Up)), Update::Ignored);
     assert_eq!(list.handle_event(&key(KeyCode::Down)), Update::Redraw);
     assert_eq!(list.handle_event(&key(KeyCode::End)), Update::Redraw);
     assert_eq!(list.handle_event(&key(KeyCode::Down)), Update::Ignored);
     assert_eq!(list.handle_event(&key(KeyCode::End)), Update::Ignored);
-    let mut empty = MessageList::new(Vec::new());
+    let mut empty = new_list(Vec::new());
     assert_eq!(empty.handle_event(&key(KeyCode::Down)), Update::Ignored);
     assert_eq!(empty.selected(), None);
 }
 
 #[test]
 fn a_resize_asks_for_a_redraw() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     assert_eq!(list.handle_event(&Event::Resize(40, 10)), Update::Redraw);
 }
 
 #[test]
 fn a_held_key_keeps_moving() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     let mut repeat = KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE);
     repeat.kind = KeyEventKind::Repeat;
     assert_eq!(list.handle_event(&Event::Key(repeat)), Update::Redraw);
@@ -474,7 +480,7 @@ fn a_held_key_keeps_moving() {
 
 #[test]
 fn ctrl_and_alt_keys_do_nothing_except_ctrl_c() {
-    let mut list = MessageList::new(numbered(3));
+    let mut list = new_list(numbered(3));
     for modifiers in [KeyModifiers::CONTROL, KeyModifiers::ALT] {
         for code in [KeyCode::Char('j'), KeyCode::Char('q'), KeyCode::Down] {
             let event = with_modifiers(code, modifiers);
@@ -492,7 +498,7 @@ fn ctrl_and_alt_keys_do_nothing_except_ctrl_c() {
 
 #[test]
 fn the_date_is_dim_except_on_the_selected_row() {
-    let mut list = MessageList::new(numbered(2));
+    let mut list = new_list(numbered(2));
     let terminal = draw(&mut list, 80, 8);
     let rows = lines(&terminal);
     let buffer = terminal.backend().buffer();
@@ -505,7 +511,7 @@ fn the_date_is_dim_except_on_the_selected_row() {
 
 #[test]
 fn the_hint_names_the_keys() {
-    let mut list = MessageList::new(numbered(2));
+    let mut list = new_list(numbered(2));
     let rows = lines(&draw(&mut list, 80, 8));
     assert_eq!(
         rows[7],
@@ -515,7 +521,7 @@ fn the_hint_names_the_keys() {
 
 #[test]
 fn the_narrowest_screen_still_says_how_to_quit() {
-    let mut list = MessageList::new(numbered(2));
+    let mut list = new_list(numbered(2));
     let rows = lines(&draw(&mut list, tuit_tui::MIN_WIDTH, 8));
     assert!(rows[7].starts_with(" q quit · "), "{}", rows[7]);
     assert!(rows[7].ends_with('…'), "{}", rows[7]);
@@ -526,7 +532,7 @@ fn text_that_would_show_nothing_gets_the_placeholder() {
     // Spaces, a tab and a line break (which show as spaces), a character that takes no cells,
     // and one the rule for a terminal line removes.
     for blank in ["   ", "\t\r\n", "\u{200b}\u{200b}", "\u{202e}"] {
-        let mut list = MessageList::new(vec![message(1, blank, blank, None)]);
+        let mut list = new_list(vec![message(1, blank, blank, None)]);
         let rows = lines(&draw(&mut list, 80, 8));
         assert!(rows[1].contains("(no sender)"), "{blank:?}: {}", rows[1]);
         assert!(rows[1].contains("(no subject)"), "{blank:?}: {}", rows[1]);
@@ -535,7 +541,7 @@ fn text_that_would_show_nothing_gets_the_placeholder() {
 
 #[test]
 fn text_of_only_control_characters_shows_replacement_characters() {
-    let mut list = MessageList::new(vec![message(1, "\x1b\x07", "\u{7f}", None)]);
+    let mut list = new_list(vec![message(1, "\x1b\x07", "\u{7f}", None)]);
     let rows = lines(&draw(&mut list, 80, 8));
     assert!(rows[1].contains("\u{fffd}\u{fffd}"), "{}", rows[1]);
     assert!(!rows[1].contains("(no sender)"), "{}", rows[1]);
@@ -544,14 +550,14 @@ fn text_of_only_control_characters_shows_replacement_characters() {
 
 #[test]
 fn a_date_too_long_for_its_column_is_left_out() {
-    // "30 Dec 9999" fits in 11 cells. "30 Dec -9999" is 12, and isn't shown cut short.
+    // "9999-12-30" fits in 10 cells. "-9999-12-30" is 11, and isn't shown cut short.
     let year_9999 = 253_402_207_200;
     let too_wide = jiff::civil::date(-9999, 12, 30)
         .to_zoned(jiff::tz::TimeZone::UTC)
         .unwrap()
         .timestamp()
         .as_second();
-    let mut list = MessageList::new(vec![
+    let mut list = new_list(vec![
         message(1, "Ada", "Too wide", Some(too_wide)),
         message(2, "Ada", "Year 9999", Some(year_9999)),
     ]);
@@ -561,13 +567,14 @@ fn a_date_too_long_for_its_column_is_left_out() {
         "{}",
         rows[1]
     );
-    assert!(rows[2].contains("30 Dec 9999"), "{}", rows[2]);
+    assert!(rows[2].contains("9999-12-30"), "{}", rows[2]);
 }
 
 #[test]
 fn a_date_the_date_library_cannot_hold_leaves_the_date_column_empty() {
     // The first and last second it can hold, and the one on either side of each, and the
-    // extremes of `i64`. None of them panics, and only the two inside the limits show a date.
+    // extremes of `i64`. None of them panics, and only the last second it can hold
+    // shows a date: the first is in the year -9999, which is too long for the column.
     let first = -377_705_023_201;
     let last = 253_402_207_200;
     let seconds = [
@@ -585,13 +592,12 @@ fn a_date_the_date_library_cannot_hold_leaves_the_date_column_empty() {
         .enumerate()
         .map(|(n, &s)| message(n, "Ada", &format!("Subject {n}"), Some(s)))
         .collect();
-    let mut list = MessageList::new(messages);
+    let mut list = new_list(messages);
     let rows = lines(&draw(&mut list, 80, 12));
     for (n, row) in rows[1..=seconds.len()].iter().enumerate() {
         let shown = row.trim_end_matches('│').trim();
         match n {
-            3 => assert!(shown.ends_with("2 Jan -9999"), "{n}: {row}"),
-            4 => assert!(shown.ends_with("30 Dec 9999"), "{n}: {row}"),
+            4 => assert!(shown.ends_with("9999-12-30"), "{n}: {row}"),
             _ => assert!(shown.ends_with(&format!("Subject {n}")), "{n}: {row}"),
         }
     }
@@ -599,7 +605,7 @@ fn a_date_the_date_library_cannot_hold_leaves_the_date_column_empty() {
 
 #[test]
 fn gg_goes_to_the_top() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::End]);
     press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('g')]);
     assert_eq!(list.selected(), Some(0));
@@ -607,7 +613,7 @@ fn gg_goes_to_the_top() {
 
 #[test]
 fn gg_at_the_top_asks_for_no_redraw() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     assert_eq!(list.handle_event(&key(KeyCode::Char('g'))), Update::Ignored);
     assert_eq!(list.handle_event(&key(KeyCode::Char('g'))), Update::Ignored);
     assert_eq!(list.selected(), Some(0));
@@ -616,7 +622,7 @@ fn gg_at_the_top_asks_for_no_redraw() {
 #[test]
 fn the_release_between_two_presses_of_g_does_not_break_the_pair() {
     // Terminals that report releases send press, release, press for `gg`.
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::End]);
     let mut release = KeyEvent::from(KeyCode::Char('g'));
     release.kind = KeyEventKind::Release;
@@ -628,7 +634,7 @@ fn the_release_between_two_presses_of_g_does_not_break_the_pair() {
 
 #[test]
 fn a_resize_between_two_presses_of_g_does_not_break_the_pair() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::End, KeyCode::Char('g')]);
     list.handle_event(&Event::Resize(80, 12));
     press(&mut list, &[KeyCode::Char('g')]);
@@ -650,7 +656,7 @@ fn any_key_between_two_presses_of_g_breaks_the_pair() {
         with_modifiers(KeyCode::Char('g'), KeyModifiers::ALT),
     ];
     for other in between {
-        let mut list = MessageList::new(numbered(5));
+        let mut list = new_list(numbered(5));
         press(&mut list, &[KeyCode::End, KeyCode::Char('g')]);
         list.handle_event(&other);
         press(&mut list, &[KeyCode::Char('g')]);
@@ -660,14 +666,14 @@ fn any_key_between_two_presses_of_g_breaks_the_pair() {
 
 #[test]
 fn g_then_q_quits() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::Char('g')]);
     assert_eq!(list.handle_event(&key(KeyCode::Char('q'))), Update::Quit);
 }
 
 #[test]
 fn a_lone_g_does_not_move() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::End]);
     let update = list.handle_event(&key(KeyCode::Char('g')));
     assert_eq!(update, Update::Ignored);
@@ -676,7 +682,7 @@ fn a_lone_g_does_not_move() {
 
 #[test]
 fn g_then_another_key_does_that_keys_job() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('j')]);
     assert_eq!(list.selected(), Some(1));
     press(&mut list, &[KeyCode::Char('g'), KeyCode::Char('G')]);
@@ -687,7 +693,52 @@ fn g_then_another_key_does_that_keys_job() {
 
 #[test]
 fn home_goes_to_the_top_on_one_press() {
-    let mut list = MessageList::new(numbered(5));
+    let mut list = new_list(numbered(5));
     press(&mut list, &[KeyCode::End, KeyCode::Home]);
     assert_eq!(list.selected(), Some(0));
+}
+
+#[test]
+fn dates_are_shown_by_the_calendar_of_the_zone_the_list_was_given() {
+    let late = message(
+        1,
+        "Ada",
+        "Late in the day in UTC",
+        Some(OCT_2_2026 + 84_600),
+    );
+    let early = message(2, "Bo", "Early in the day in UTC", Some(OCT_2_2026 + 1_800));
+    let in_zone = |hours| {
+        let zone = TimeZone::fixed(tz::offset(hours));
+        let mut list = MessageList::new(vec![late.clone(), early.clone()], zone);
+        lines(&draw(&mut list, 80, 8))
+    };
+    // 23:30 UTC on 2 October is 3 October at +02:00, and 00:30 UTC is 1 October at -05:00.
+    let east = in_zone(2);
+    assert!(east[1].ends_with("  2026-10-03 │"), "{}", east[1]);
+    assert!(east[2].ends_with("  2026-10-02 │"), "{}", east[2]);
+    let west = in_zone(-5);
+    assert!(west[1].ends_with("  2026-10-02 │"), "{}", west[1]);
+    assert!(west[2].ends_with("  2026-10-01 │"), "{}", west[2]);
+    let utc = in_zone(0);
+    assert!(utc[1].ends_with("  2026-10-02 │"), "{}", utc[1]);
+    assert!(utc[2].ends_with("  2026-10-02 │"), "{}", utc[2]);
+}
+
+#[test]
+fn a_year_before_zero_leaves_the_date_column_empty() {
+    // 0000-01-01 is shown whole; the year before it is signed, so one cell too long for the
+    // column, and is left out and not cut short to look like another year.
+    let year_0 = -62_167_219_200;
+    let mut list = new_list(vec![
+        message(1, "Ada", "Year zero", Some(year_0)),
+        message(2, "Ada", "Year minus one", Some(year_0 - 1)),
+    ]);
+    let rows = lines(&draw(&mut list, 80, 8));
+    assert!(rows[1].ends_with("  0000-01-01 │"), "{}", rows[1]);
+    assert!(
+        rows[2]
+            .trim_end_matches('│')
+            .trim()
+            .ends_with("Year minus one")
+    );
 }

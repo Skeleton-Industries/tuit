@@ -4,6 +4,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+use jiff::tz::TimeZone;
 use tuit_core::{MessageSummary, StoreError, Untrusted, list_newest_first};
 use tuit_maildir::Maildir;
 
@@ -66,10 +67,11 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Request, String> {
 }
 
 /// The messages from `source`, in the order the list shows them: newest first.
-fn load(source: Source) -> Result<Vec<MessageSummary>, StoreError> {
+/// The made-up sample is dated for `time_zone`, so it shows the dates it was written with.
+fn load(source: Source, time_zone: &TimeZone) -> Result<Vec<MessageSummary>, StoreError> {
     match source {
         Source::Maildir(path) => list_newest_first(&Maildir::new(path)),
-        Source::Sample => Ok(sample::messages()),
+        Source::Sample => Ok(sample::messages(time_zone)),
     }
 }
 
@@ -91,11 +93,14 @@ fn main() -> ExitCode {
         }
         Err(message) => return fail(&Untrusted::new(message)),
     };
+    // The one place the machine's time zone is read: `TZ` if it is set, otherwise the system's.
+    // If that zone can't be found or read, jiff gives one that acts as UTC, and says nothing.
+    let time_zone = TimeZone::system();
     // The mail is read before the screen opens, so an error prints to a normal terminal.
-    let shown = load(source)
+    let shown = load(source, &time_zone)
         .map_err(StoreError::into_message)
         .and_then(|messages| {
-            tuit_tui::run(messages).map_err(|error| Untrusted::new(error.to_string()))
+            tuit_tui::run(messages, time_zone).map_err(|error| Untrusted::new(error.to_string()))
         });
     match shown {
         Ok(()) => ExitCode::SUCCESS,
@@ -230,7 +235,7 @@ mod tests {
             );
             std::fs::write(root.join(file), text).unwrap();
         }
-        let loaded = load(Source::Maildir(root.clone()));
+        let loaded = load(Source::Maildir(root.clone()), &TimeZone::UTC);
         std::fs::remove_dir_all(&root).unwrap();
         let subjects: Vec<Untrusted> = loaded.unwrap().into_iter().map(|m| m.subject).collect();
         assert_eq!(subjects, ["Newest", "Older", "Oldest"].map(Untrusted::new));
@@ -238,7 +243,11 @@ mod tests {
 
     #[test]
     fn the_sample_source_loads_the_made_up_messages() {
-        assert_eq!(load(Source::Sample).unwrap(), sample::messages());
-        assert!(!sample::messages().is_empty());
+        // A zone far from UTC, so a `load` that dropped the zone would give other dates.
+        let zone = TimeZone::fixed(jiff::tz::offset(14));
+        let loaded = load(Source::Sample, &zone).unwrap();
+        assert_eq!(loaded, sample::messages(&zone));
+        assert_ne!(loaded, sample::messages(&TimeZone::UTC));
+        assert!(!sample::messages(&zone).is_empty());
     }
 }

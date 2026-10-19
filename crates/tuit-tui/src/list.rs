@@ -1,6 +1,7 @@
 //! The message list: what is loaded, which row is selected, how keys move it, and how it draws.
 //! None of it needs a real terminal. Feed it events and draw it into any ratatui buffer.
 
+use jiff::tz::TimeZone;
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -22,9 +23,8 @@ pub const MIN_HEIGHT: u16 = 5;
 const PADDING: usize = 1;
 /// Space between columns.
 const GAP: usize = 2;
-/// "30 Sep 2026", the longest date a year from 1000 to 9999 makes. A longer one, such as
-/// "30 Dec -9999", is left out.
-const DATE_WIDTH: usize = 11;
+/// "2026-10-08", which is as long as every date with a year from 0000 to 9999.
+const DATE_WIDTH: usize = 10;
 /// The sender column's usual width.
 const SENDER_WIDTH: usize = 22;
 /// The date column is dropped unless the subject can keep at least this much.
@@ -51,6 +51,8 @@ pub enum Update {
 #[derive(Debug, Clone)]
 pub struct MessageList {
     messages: Vec<MessageSummary>,
+    /// Dates are shown as they fall in this zone.
+    time_zone: TimeZone,
     selected: usize,
     /// Index of the first visible row.
     offset: usize,
@@ -62,10 +64,12 @@ pub struct MessageList {
 }
 
 impl MessageList {
-    /// A list showing `messages` in the order given, with the first one selected.
-    pub fn new(messages: Vec<MessageSummary>) -> Self {
+    /// A list showing `messages` in the order given, with the first one selected. Dates are
+    /// shown as they fall in `time_zone`. The list never looks up a zone itself.
+    pub fn new(messages: Vec<MessageSummary>, time_zone: TimeZone) -> Self {
         Self {
             messages,
+            time_zone,
             selected: 0,
             offset: 0,
             page: 1,
@@ -191,6 +195,7 @@ impl MessageList {
                 inner,
                 y,
                 &columns,
+                &self.time_zone,
                 buf,
             );
         }
@@ -215,6 +220,7 @@ fn render_row(
     inner: Rect,
     y: u16,
     columns: &Columns,
+    time_zone: &TimeZone,
     buf: &mut Buffer,
 ) {
     let row = Rect::new(inner.x, y, inner.width, 1);
@@ -244,7 +250,7 @@ fn render_row(
 
     // A date too long for its column, or one that can't be worked out, is left out: cut short,
     // its year would read as another.
-    let date = message.date.and_then(format_date);
+    let date = message.date.and_then(|date| format_date(date, time_zone));
     if let (true, Some(date)) = (columns.date, date)
         && cells(&date) <= DATE_WIDTH
     {

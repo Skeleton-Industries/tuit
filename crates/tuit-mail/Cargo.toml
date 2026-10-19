@@ -20,7 +20,7 @@ harness = false
 tuit-core = { workspace = true }
 tuit-maildir = { workspace = true }
 tuit-tui = { workspace = true }
-jiff = { workspace = true }
+jiff = { workspace = true, features = ["tz-system", "tzdb-zoneinfo"] }
 
 [dev-dependencies]
 ratatui = { workspace = true }
