@@ -889,6 +889,7 @@ version = "0.1.0"
 dependencies = [
  "jiff",
  "ratatui",
+ "signal-hook",
  "tuit-core",
  "unicode-segmentation",
 ]
